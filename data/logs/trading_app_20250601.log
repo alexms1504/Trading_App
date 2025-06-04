@@ -1,0 +1,215 @@
+2025-06-01 17:30:10 - test_connection - INFO - Starting IB connection test...
+2025-06-01 17:30:10 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7497
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm.nj
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:hfarm
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:cashfarm
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:euhmds
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:apachmds
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:fundfarm
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:ushmds
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB Info: Sec-def data farm connection is OK:secdefhk
+2025-06-01 17:30:10 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 17:30:10 - src.core.ib_connection - ERROR - Failed to connect to IB: IB.reqAccountUpdates() takes from 1 to 2 positional arguments but 3 were given
+2025-06-01 17:30:10 - test_connection - ERROR - Connection error: IB.reqAccountUpdates() takes from 1 to 2 positional arguments but 3 were given
+2025-06-01 17:30:10 - test_connection - INFO - Connection status: {'state': 'ERROR', 'connected': True, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:30:10 - test_connection - ERROR - Make sure TWS/IB Gateway is running and API is enabled
+2025-06-01 17:30:10 - test_connection - ERROR - Check that port 7497 (paper) or 7496 (live) is correct
+2025-06-01 17:31:15 - test_connection - INFO - Starting IB connection test...
+2025-06-01 17:31:15 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7497
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm.nj
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:hfarm
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:cashfarm
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:euhmds
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:apachmds
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:fundfarm
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:ushmds
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB Info: Sec-def data farm connection is OK:secdefhk
+2025-06-01 17:31:15 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 17:31:15 - src.core.ib_connection - ERROR - Failed to connect to IB: IB.reqAccountUpdates() takes from 1 to 2 positional arguments but 3 were given
+2025-06-01 17:31:15 - test_connection - ERROR - Connection error: IB.reqAccountUpdates() takes from 1 to 2 positional arguments but 3 were given
+2025-06-01 17:31:15 - test_connection - INFO - Connection status: {'state': 'ERROR', 'connected': True, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:31:15 - test_connection - ERROR - Make sure TWS/IB Gateway is running and API is enabled
+2025-06-01 17:31:15 - test_connection - ERROR - Check that port 7497 (paper) or 7496 (live) is correct
+2025-06-01 17:37:45 - test_connection - INFO - Starting IB connection test...
+2025-06-01 17:37:45 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7497
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm.nj
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:hfarm
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:cashfarm
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: Market data farm connection is OK:usfarm
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:euhmds
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:apachmds
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:fundfarm
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: HMDS data farm connection is OK:ushmds
+2025-06-01 17:37:45 - src.core.ib_connection - INFO - IB Info: Sec-def data farm connection is OK:secdefhk
+2025-06-01 17:37:46 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 17:37:46 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 17:37:46 - test_connection - INFO - Connection status: {'state': 'CONNECTED', 'connected': True, 'last_connection': datetime.datetime(2025, 6, 1, 17, 37, 46, 376118), 'reconnect_attempts': 0}
+2025-06-01 17:37:46 - test_connection - INFO - Successfully connected to IB
+2025-06-01 17:37:48 - test_connection - INFO - Account values received: 118 items
+2025-06-01 17:37:48 - test_connection - INFO -   NetLiquidation: 1100068.87
+2025-06-01 17:37:48 - test_connection - INFO -   BuyingPower: 3562554.28
+2025-06-01 17:37:48 - test_connection - INFO -   TotalCashValue: 1059074.72
+2025-06-01 17:37:48 - src.core.ib_connection - INFO - Disconnecting from IB
+2025-06-01 17:37:48 - src.core.ib_connection - WARNING - IB API disconnected
+2025-06-01 17:37:48 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 17, 37, 46, 376118), 'reconnect_attempts': 0}
+2025-06-01 17:37:48 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 17, 37, 46, 376118), 'reconnect_attempts': 0}
+2025-06-01 17:37:48 - test_connection - INFO - Successfully disconnected
+2025-06-01 17:37:48 - src.core.ib_connection - INFO - Reconnection attempt 1/5 in 5s
+2025-06-01 17:39:14 - test_connection - INFO - Starting IB connection test...
+2025-06-01 17:39:14 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:39:14 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 17:39:16 - src.core.ib_connection - ERROR - Failed to connect to IB: [WinError 1225] 遠端電腦拒絕網路連線。
+2025-06-01 17:39:16 - test_connection - ERROR - Connection error: [WinError 1225] 遠端電腦拒絕網路連線。
+2025-06-01 17:39:16 - test_connection - INFO - Connection status: {'state': 'ERROR', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:39:16 - test_connection - ERROR - Failed to connect to IB
+2025-06-01 17:39:16 - test_connection - ERROR - Make sure TWS/IB Gateway is running and API is enabled
+2025-06-01 17:39:16 - test_connection - ERROR - Check that port 7497 (paper) or 7496 (live) is correct
+2025-06-01 17:40:00 - test_connection - INFO - Starting IB connection test...
+2025-06-01 17:40:00 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0}
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 17:40:00 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 17:40:01 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 17:40:01 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 17:40:01 - test_connection - INFO - Connection status: {'state': 'CONNECTED', 'connected': True, 'last_connection': datetime.datetime(2025, 6, 1, 17, 40, 1, 555656), 'reconnect_attempts': 0}
+2025-06-01 17:40:01 - test_connection - INFO - Successfully connected to IB
+2025-06-01 17:40:03 - test_connection - INFO - Account values received: 90 items
+2025-06-01 17:40:03 - test_connection - INFO -   NetLiquidation: 11664.87
+2025-06-01 17:40:03 - test_connection - INFO -   BuyingPower: 3579.44
+2025-06-01 17:40:03 - test_connection - INFO -   TotalCashValue: 3579.44
+2025-06-01 17:40:03 - src.core.ib_connection - INFO - Disconnecting from IB
+2025-06-01 17:40:03 - src.core.ib_connection - WARNING - IB API disconnected
+2025-06-01 17:40:03 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 17, 40, 1, 555656), 'reconnect_attempts': 0}
+2025-06-01 17:40:03 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 17, 40, 1, 555656), 'reconnect_attempts': 0}
+2025-06-01 17:40:03 - test_connection - INFO - Successfully disconnected
+2025-06-01 17:40:03 - src.core.ib_connection - INFO - Reconnection attempt 1/5 in 5s
+2025-06-01 18:19:29 - test_connection - INFO - Starting IB connection test...
+2025-06-01 18:19:29 - test_connection - INFO - Connection status: {'state': 'CONNECTING', 'connected': False, 'last_connection': None, 'reconnect_attempts': 0, 'accounts': [], 'active_account': None}
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 18:19:29 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 18:19:30 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 18:19:30 - src.core.ib_connection - INFO - Found 3 accounts: U19615084, U7905562, U10582689
+2025-06-01 18:19:30 - src.core.ib_connection - INFO - Active account set to: U19615084
+2025-06-01 18:19:30 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 18:19:30 - test_connection - INFO - Connection status: {'state': 'CONNECTED', 'connected': True, 'last_connection': datetime.datetime(2025, 6, 1, 18, 19, 30, 489902), 'reconnect_attempts': 0, 'accounts': ['U19615084', 'U7905562', 'U10582689'], 'active_account': 'U19615084'}
+2025-06-01 18:19:30 - test_connection - INFO - Successfully connected to IB
+2025-06-01 18:19:33 - test_connection - INFO - Found 3 accounts: U19615084, U7905562, U10582689
+2025-06-01 18:19:33 - test_connection - INFO - 
+=== Account: U19615084 ===
+2025-06-01 18:19:33 - test_connection - INFO -   AvailableFunds: 4801.52 USD
+2025-06-01 18:19:33 - test_connection - INFO -   BuyingPower: 16005.06 USD
+2025-06-01 18:19:33 - test_connection - INFO -   NetLiquidation: 4802.14 USD
+2025-06-01 18:19:33 - test_connection - INFO -   TotalCashValue: 4802.14 USD
+2025-06-01 18:19:33 - test_connection - INFO - 
+=== Account: U7905562 ===
+2025-06-01 18:19:33 - test_connection - INFO -   AvailableFunds: 3577.61 CAD
+2025-06-01 18:19:33 - test_connection - INFO -   BuyingPower: 3577.61 CAD
+2025-06-01 18:19:33 - test_connection - INFO -   NetLiquidation: 11658.92 CAD
+2025-06-01 18:19:33 - test_connection - INFO -   TotalCashValue: 3577.61 CAD
+2025-06-01 18:19:33 - test_connection - INFO -   Positions: 2
+2025-06-01 18:19:33 - test_connection - INFO -     SPY: 10.0 @ 578.02295
+2025-06-01 18:19:33 - test_connection - INFO -     SPY: 10.0 @ 578.02295
+2025-06-01 18:19:33 - test_connection - INFO - 
+=== Account: U10582689 ===
+2025-06-01 18:19:33 - test_connection - INFO -   AvailableFunds: 14012.75 USD
+2025-06-01 18:19:33 - test_connection - INFO -   BuyingPower: 46709.15 USD
+2025-06-01 18:19:33 - test_connection - INFO -   NetLiquidation: 16835.77 USD
+2025-06-01 18:19:33 - test_connection - INFO -   TotalCashValue: 7665.02 USD
+2025-06-01 18:19:33 - test_connection - INFO -   Positions: 26
+2025-06-01 18:19:33 - test_connection - INFO -     LTBR: 20.0 @ 10.5275
+2025-06-01 18:19:33 - test_connection - INFO -     TSLA: 2.0 @ 276.707
+2025-06-01 18:19:33 - test_connection - INFO -     META: 1.0 @ 645.8905
+2025-06-01 18:19:33 - test_connection - INFO - 
+Switching active account to: U7905562
+2025-06-01 18:19:33 - src.core.ib_connection - INFO - Active account changed to: U7905562
+2025-06-01 18:19:33 - test_connection - INFO - Active account values: 90 items
+2025-06-01 18:19:33 - src.core.ib_connection - INFO - Disconnecting from IB
+2025-06-01 18:19:33 - src.core.ib_connection - WARNING - IB API disconnected
+2025-06-01 18:19:33 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 18, 19, 30, 489902), 'reconnect_attempts': 0, 'accounts': ['U19615084', 'U7905562', 'U10582689'], 'active_account': 'U7905562'}
+2025-06-01 18:19:33 - test_connection - INFO - Connection status: {'state': 'DISCONNECTED', 'connected': False, 'last_connection': datetime.datetime(2025, 6, 1, 18, 19, 30, 489902), 'reconnect_attempts': 0, 'accounts': ['U19615084', 'U7905562', 'U10582689'], 'active_account': 'U7905562'}
+2025-06-01 18:19:33 - test_connection - INFO - Successfully disconnected
+2025-06-01 18:19:33 - src.core.ib_connection - INFO - Reconnection attempt 1/5 in 5s
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm.nj
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 23:51:43 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 23:51:44 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 23:51:44 - src.core.ib_connection - INFO - Found 3 accounts: U10582689, U19615084, U7905562
+2025-06-01 23:51:44 - src.core.ib_connection - INFO - Active account set to: U10582689
+2025-06-01 23:51:44 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 23:51:44 - trading_app - ERROR - Connection error: AccountManager.__init__() takes 1 positional argument but 2 were given
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm.nj
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - Found 3 accounts: U19615084, U7905562, U10582689
+2025-06-01 23:54:21 - src.core.ib_connection - INFO - Active account set to: U19615084
+2025-06-01 23:54:22 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 23:54:22 - trading_app - ERROR - Connection error: could not convert string to float: 'INDIVIDUAL'
+2025-06-01 23:54:32 - src.core.ib_connection - INFO - Already connected to IB
+2025-06-01 23:54:32 - trading_app - ERROR - Connection error: could not convert string to float: 'INDIVIDUAL'
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm.nj
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - Found 3 accounts: U19615084, U7905562, U10582689
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - Active account set to: U19615084
+2025-06-01 23:56:45 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 23:56:45 - src.core.account_manager - INFO - Account Manager initialized
+2025-06-01 23:56:45 - trading_app - INFO - Connected to account: U19615084
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - Connecting to IB at 127.0.0.1:7496
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm.nj
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:hfarm
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cashfarm
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:cafarm
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:usfarm
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:apachmds
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: \u6b77\u53f2\u5e02\u5834\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:ushmds
+2025-06-01 23:58:45 - src.core.ib_connection - INFO - IB Info: Sec-def\u6578\u64da\u8fb2\u5834\u9023\u63a5\u6b63\u5e38:secdefsg
+2025-06-01 23:58:46 - src.core.ib_connection - INFO - IB API connected event received
+2025-06-01 23:58:46 - src.core.ib_connection - INFO - Found 3 accounts: U19615084, U10582689, U7905562
+2025-06-01 23:58:46 - src.core.ib_connection - INFO - Active account set to: U19615084
+2025-06-01 23:58:47 - src.core.ib_connection - INFO - Successfully connected to IB
+2025-06-01 23:58:47 - src.core.account_manager - INFO - Account Manager initialized
+2025-06-01 23:58:47 - src.core.ib_connection - INFO - Active account changed to: U19615084
+2025-06-01 23:58:47 - trading_app - INFO - Switched to account: U19615084
+2025-06-01 23:58:47 - trading_app - INFO - Connected with 3 accounts: U19615084, U10582689, U7905562
+2025-06-01 23:58:53 - src.core.ib_connection - INFO - Active account changed to: U10582689
+2025-06-01 23:58:53 - trading_app - INFO - Switched to account: U10582689
+2025-06-01 23:58:59 - src.core.ib_connection - INFO - Active account changed to: U7905562
+2025-06-01 23:58:59 - trading_app - INFO - Switched to account: U7905562
+2025-06-01 23:59:04 - src.core.ib_connection - INFO - Active account changed to: U19615084
+2025-06-01 23:59:04 - trading_app - INFO - Switched to account: U19615084

@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(grep:*)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe -c \"\nfrom src.core.chart_data_manager import chart_data_manager\nfrom src.ui.chart_widget import ChartWidget\nprint('Chart modules imported successfully')\nprint('Available timeframes:', chart_data_manager.get_available_timeframes())\nprint('Chart infrastructure ready')\n\")",
+      "Bash(\"/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe\" -c \"\nimport lightweight_charts\nchart = lightweight_charts.Chart()\nprint(''Chart methods:'')\nmethods = [method for method in dir(chart) if not method.startswith(''_'')]\nfor method in methods:\n    if ''series'' in method or ''volume'' in method:\n        print(f''  {method}'')\n\")",
+      "Bash(\"/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe\" -c \"\nimport lightweight_charts\nchart = lightweight_charts.Chart()\nprint(''All Chart methods:'')\nmethods = [method for method in dir(chart) if not method.startswith(''_'')]\nfor method in sorted(methods):\n    print(f''  {method}'')\n\")",
+      "Bash(\"/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe\" -c \"\nimport lightweight_charts\nchart = lightweight_charts.Chart()\n# Test basic chart operations\nprint(''Chart created successfully'')\nprint(''Setting some test data...'')\ntest_data = [\n    {''time'': ''2023-01-01'', ''open'': 100, ''high'': 105, ''low'': 95, ''close'': 102},\n    {''time'': ''2023-01-02'', ''open'': 102, ''high'': 108, ''low'': 100, ''close'': 106}\n]\nchart.set(test_data)\nprint(''Data set successfully'')\nchart.exit()\nprint(''Chart cleanup completed'')\n\")",
+      "Bash(\"/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe\" -c \"\nimport lightweight_charts\nimport pandas as pd\nchart = lightweight_charts.Chart()\nprint(''Chart created successfully'')\nprint(''Setting test data as DataFrame...'')\ntest_data = pd.DataFrame([\n    {''time'': ''2023-01-01'', ''open'': 100, ''high'': 105, ''low'': 95, ''close'': 102},\n    {''time'': ''2023-01-02'', ''open'': 102, ''high'': 108, ''low'': 100, ''close'': 106}\n])\nprint(''DataFrame created:'', test_data.shape)\nchart.set(test_data)\nprint(''Data set successfully'')\nchart.exit()\nprint(''Chart cleanup completed'')\n\")",
+      "Bash(timeout:*)",
+      "Bash(\"/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe\" -c \"\ntry:\n    from lightweight_charts.widgets import QtChart\n    print(''QtChart is available!'')\nexcept ImportError as e:\n    print(''QtChart not found:'', e)\n    \n# Check what''s available in lightweight_charts\nimport lightweight_charts\nprint(''\\nAvailable in lightweight_charts:'')\nprint([item for item in dir(lightweight_charts) if not item.startswith(''_'')][:20])\n\n# Check for widgets module\ntry:\n    import lightweight_charts.widgets\n    print(''\\nwidgets module found!'')\n    print(''Contents:'', dir(lightweight_charts.widgets))\nexcept:\n    print(''\\nNo widgets module found'')\n\")",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_updated_indicators.py)",
+      "Bash(rm:*)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe main.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_color_scheme.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_optimized_layout.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_time_axis.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_eastern_time.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_clean_time_axis.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_30min_grid.py)",
+      "Bash(python test:*)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_1hour_grid.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_daily_chart.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_price_levels.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_crosshair.py)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe test_enter_key.py)",
+      "Bash(rg:*)",
+      "Bash(/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python -m pip list)",
+      "Bash(python:*)"
+    ],
+    "deny": []
+  }
+}
