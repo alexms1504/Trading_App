@@ -9,7 +9,7 @@ import math
 
 from src.services.base_service import BaseService
 from src.core.risk_calculator import RiskCalculator
-from src.services.account_manager_service import AccountManager
+from src.services.account_manager_service import AccountManagerService
 from src.services.service_registry import get_service_registry
 from src.utils.logger import logger
 from config import TRADING_CONFIG
@@ -21,7 +21,7 @@ class RiskService(BaseService):
     def __init__(self):
         super().__init__("RiskService")
         self.risk_calculator: Optional[RiskCalculator] = None
-        self.account_manager: Optional[AccountManager] = None
+        self.account_manager: Optional[AccountManagerService] = None
         
     def initialize(self) -> bool:
         """Initialize the risk service"""
@@ -59,7 +59,7 @@ class RiskService(BaseService):
             logger.error(f"Error cleaning up RiskService: {str(e)}")
             return False
             
-    def set_account_manager(self, account_manager: AccountManager):
+    def set_account_manager(self, account_manager: AccountManagerService):
         """Set account manager and initialize risk calculator"""
         try:
             self.account_manager = account_manager

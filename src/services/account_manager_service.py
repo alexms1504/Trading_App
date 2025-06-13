@@ -35,6 +35,14 @@ class AccountManagerService(BaseService):
         self._subscribed = False
         self._update_callbacks: List[Callable] = []
         
+        # Enhanced callback system from AccountService
+        self.account_update_callbacks: List[Callable] = []
+        self.position_update_callbacks: List[Callable] = []
+        
+        # Caching layer from AccountService
+        self._account_data_cache: Dict[str, Any] = {}
+        self._positions_cache: List[Dict] = []
+        
     def initialize(self) -> bool:
         """Initialize the service"""
         try:
@@ -50,7 +58,55 @@ class AccountManagerService(BaseService):
             self.ib_manager.unsubscribe_from_event('account', self._on_account_update)
             self.ib_manager.unsubscribe_from_event('position', self._on_position_update)
             self._subscribed = False
+            
+        # Clear enhanced callbacks
+        self.account_update_callbacks.clear()
+        self.position_update_callbacks.clear()
+        self._account_data_cache.clear()
+        self._positions_cache.clear()
+        
         logger.info("AccountManagerService cleaned up")
+    
+    # Enhanced callback registration methods from AccountService
+    def register_account_update_callback(self, callback: Callable):
+        """Register a callback for account updates"""
+        if callback not in self.account_update_callbacks:
+            self.account_update_callbacks.append(callback)
+            logger.debug(f"Registered account update callback: {callback.__name__}")
+    
+    def unregister_account_update_callback(self, callback: Callable):
+        """Unregister an account update callback"""
+        if callback in self.account_update_callbacks:
+            self.account_update_callbacks.remove(callback)
+            logger.debug(f"Unregistered account update callback: {callback.__name__}")
+    
+    def register_position_update_callback(self, callback: Callable):
+        """Register a callback for position updates"""
+        if callback not in self.position_update_callbacks:
+            self.position_update_callbacks.append(callback)
+            logger.debug(f"Registered position update callback: {callback.__name__}")
+    
+    def unregister_position_update_callback(self, callback: Callable):
+        """Unregister a position update callback"""
+        if callback in self.position_update_callbacks:
+            self.position_update_callbacks.remove(callback)
+            logger.debug(f"Unregistered position update callback: {callback.__name__}")
+    
+    def _notify_account_update(self, account_data: Dict[str, Any]):
+        """Notify all registered callbacks of account update"""
+        for callback in self.account_update_callbacks:
+            try:
+                callback(account_data)
+            except Exception as e:
+                logger.error(f"Error in account update callback: {str(e)}")
+                
+    def _notify_position_update(self, positions: List[Dict[str, Any]]):
+        """Notify all registered callbacks of position update"""
+        for callback in self.position_update_callbacks:
+            try:
+                callback(positions)
+            except Exception as e:
+                logger.error(f"Error in position update callback: {str(e)}")
         
     async def initialize_async(self):
         """Initialize account manager and subscribe to updates"""
@@ -372,6 +428,107 @@ class AccountManagerService(BaseService):
                 callback()
             except Exception as e:
                 logger.error(f"Error in update callback: {str(e)}")
+    
+    # Enhanced API methods from AccountService for simplified access
+    def update_account_data(self) -> bool:
+        """Update account data from IB"""
+        try:
+            # Use async method in sync context
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self.refresh_all_accounts())
+                    return True
+                else:
+                    loop.run_until_complete(self.refresh_all_accounts())
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self.refresh_all_accounts())
+                loop.close()
+            
+            # Update cache
+            self._account_data_cache = {
+                'net_liquidation': self.get_net_liquidation(),
+                'buying_power': self.get_buying_power(),
+                'total_cash': self.get_total_cash_value(),
+                'total_positions_value': self.get_total_positions_value(),
+                'daily_pnl': self.get_daily_pnl(),
+                'unrealized_pnl': self.get_unrealized_pnl(),
+                'realized_pnl': self.get_realized_pnl(),
+                'timestamp': datetime.now()
+            }
+            
+            # Notify callbacks
+            self._notify_account_update(self._account_data_cache)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating account data: {e}")
+            return False
+    
+    def update_positions_enhanced(self) -> bool:
+        """Update positions and notify callbacks"""
+        try:
+            success = self.update_account_data()  # This updates both account and positions
+            
+            if success:
+                # Get formatted positions for UI
+                positions = self.get_positions_formatted()
+                self._positions_cache = positions
+                
+                # Notify position callbacks
+                self._notify_position_update(positions)
+                
+                logger.info(f"Updated {len(positions)} positions")
+                return True
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error updating positions: {e}")
+            return False
+    
+    def get_positions_formatted(self) -> List[Dict[str, Any]]:
+        """Get positions in AccountService format"""
+        positions = []
+        
+        for account, account_positions in self._positions.items():
+            for position in account_positions:
+                if hasattr(position, 'contract') and hasattr(position.contract, 'symbol'):
+                    positions.append({
+                        'symbol': position.contract.symbol,
+                        'position': position.position,
+                        'avg_cost': getattr(position, 'avgCost', 0),
+                        'market_price': getattr(position, 'marketPrice', 0),
+                        'market_value': getattr(position, 'marketValue', 0),
+                        'unrealized_pnl': getattr(position, 'unrealizedPNL', 0),
+                        'realized_pnl': getattr(position, 'realizedPNL', 0)
+                    })
+        
+        return positions
+    
+    def get_position_by_symbol(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Get position for a specific symbol"""
+        positions = self.get_positions_formatted()
+        for pos in positions:
+            if pos['symbol'] == symbol:
+                return pos
+        return None
+    
+    def get_account_summary_enhanced(self) -> Dict[str, Any]:
+        """Get comprehensive account summary"""
+        return {
+            'net_liquidation': self.get_net_liquidation(),
+            'buying_power': self.get_buying_power(),
+            'cash_balance': self.get_total_cash_value(),
+            'daily_pnl': self.get_daily_pnl(),
+            'unrealized_pnl': self.get_unrealized_pnl(),
+            'realized_pnl': self.get_realized_pnl(),
+            'positions_count': len(self.get_positions_formatted()),
+            'positions_value': self.get_total_positions_value(),
+            'last_update': self._account_data_cache.get('timestamp', None)
+        }
 
 
 # Legacy compatibility class for smooth migration

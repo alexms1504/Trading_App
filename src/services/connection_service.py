@@ -8,7 +8,7 @@ from typing import Optional, List, Callable, Dict, Any, Tuple
 from enum import Enum
 
 from src.services.base_service import BaseService, ServiceState
-from src.services.account_manager_service import AccountManager
+from src.services.account_manager_service import AccountManagerService
 from src.core.risk_calculator import RiskCalculator
 from src.core.order_manager import OrderManager
 from config import IB_CONFIG, TIMER_CONFIG, UI_MESSAGES, DEFAULT_ACCOUNT_VALUES
@@ -43,7 +43,7 @@ class ConnectionService(BaseService):
         
         # Connection state
         self.ib_manager = None  # Will use global singleton when connecting
-        self.account_manager: Optional[AccountManager] = None
+        self.account_manager: Optional[AccountManagerService] = None
         self.risk_calculator: Optional[RiskCalculator] = None
         self.order_manager: Optional[OrderManager] = None
         
@@ -299,7 +299,7 @@ class ConnectionService(BaseService):
             
     def _initialize_managers(self):
         """Initialize supporting managers"""
-        self.account_manager = AccountManager()
+        self.account_manager = AccountManagerService()
         self.risk_calculator = RiskCalculator(self.account_manager)
         self.order_manager = OrderManager()
         

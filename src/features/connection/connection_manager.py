@@ -8,7 +8,7 @@ from enum import Enum
 import asyncio
 
 from src.services.ib_connection_service import ib_connection_manager
-from src.services.account_manager_service import AccountManager
+from src.services.account_manager_service import AccountManagerService
 from src.services.event_bus import EventType, Event, publish_event
 from src.utils.logger import logger
 from config import CONNECTION_CONFIG
@@ -33,7 +33,7 @@ class ConnectionManager:
     
     def __init__(self):
         self.ib_manager = ib_connection_manager
-        self.account_manager: Optional[AccountManager] = None
+        self.account_manager: Optional[AccountManagerService] = None
         self.state = ConnectionState.DISCONNECTED
         self.mode: Optional[ConnectionMode] = None
         self.selected_account: Optional[str] = None
@@ -92,7 +92,7 @@ class ConnectionManager:
             
             if success:
                 # Initialize account manager
-                self.account_manager = AccountManager()
+                self.account_manager = AccountManagerService()
                 
                 # Let connection stabilize
                 asyncio.set_event_loop(asyncio.new_event_loop())
