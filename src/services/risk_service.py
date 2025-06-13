@@ -67,6 +67,26 @@ class RiskService(BaseService):
             logger.info("Risk calculator initialized in RiskService")
         except Exception as e:
             logger.error(f"Error setting account manager in RiskService: {str(e)}")
+    
+    def _ensure_risk_calculator(self) -> bool:
+        """Ensure risk calculator is available, auto-initialize if possible"""
+        if self.risk_calculator:
+            return True
+            
+        # Try to get account manager from service registry as fallback
+        try:
+            from src.services import get_account_service
+            account_service = get_account_service()
+            if account_service and hasattr(account_service, '_service'):
+                self.set_account_manager(account_service._service)
+                logger.info("Risk calculator auto-initialized from account service")
+                return True
+            else:
+                logger.warning("Risk calculator not available - account service not ready")
+                return False
+        except Exception as e:
+            logger.error(f"Risk calculator auto-init failed: {e}")
+            return False
             
     def calculate_position_size(self, 
                               entry_price: float,
@@ -92,8 +112,7 @@ class RiskService(BaseService):
         if not self._check_initialized():
             return self._empty_result()
             
-        if not self.risk_calculator:
-            logger.error("Risk calculator not available")
+        if not self._ensure_risk_calculator():
             return self._empty_result()
             
         try:
@@ -128,7 +147,7 @@ class RiskService(BaseService):
         if not self._check_initialized():
             return False, ["Risk service not initialized"]
             
-        if not self.risk_calculator:
+        if not self._ensure_risk_calculator():
             return False, ["Risk calculator not available"]
             
         try:
@@ -162,7 +181,7 @@ class RiskService(BaseService):
         if not self._check_initialized():
             return 0.0
             
-        if not self.risk_calculator:
+        if not self._ensure_risk_calculator():
             return 0.0
             
         try:
@@ -191,7 +210,7 @@ class RiskService(BaseService):
         if not self._check_initialized():
             return []
             
-        if not self.risk_calculator:
+        if not self._ensure_risk_calculator():
             return []
             
         try:

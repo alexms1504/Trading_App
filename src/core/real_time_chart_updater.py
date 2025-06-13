@@ -150,14 +150,15 @@ class RealTimeChartUpdater(QObject):
                 real_bar = bars
                 
             # Convert to our StreamingBar format
+            # Handle ib_async RealTimeBar attribute names safely
             streaming_bar = StreamingBar(
                 time=real_bar.time,
-                open=real_bar.open,
-                high=real_bar.high,
-                low=real_bar.low,
-                close=real_bar.close,
-                volume=real_bar.volume,
-                wap=real_bar.wap
+                open=getattr(real_bar, 'open_', getattr(real_bar, 'open', 0.0)),
+                high=getattr(real_bar, 'high', 0.0),
+                low=getattr(real_bar, 'low', 0.0),
+                close=getattr(real_bar, 'close', 0.0),
+                volume=getattr(real_bar, 'volume', 0),
+                wap=getattr(real_bar, 'wap', 0.0)
             )
             
             # Emit signal for chart update

@@ -191,8 +191,8 @@ class OptimizedChartMixin:
                             self.chart_data = self.chart_data[-500:]
             
             # Update the chart display efficiently
-            if hasattr(self, 'update_chart_display'):
-                self.update_chart_display(incremental=True)
+            if hasattr(self, 'update_chart_display') and hasattr(self, 'chart_data'):
+                self.update_chart_display(self.chart_data)
             
         except Exception as e:
             logger.error(f"Error applying streaming bars: {e}")
