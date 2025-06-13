@@ -64,13 +64,7 @@ PRICE_FETCH_CONFIG = {
     'fetch_prior_day': True  # Fetch prior day data
 }
 
-# Price Validation Settings
-PRICE_VALIDATION_CONFIG = {
-    'min_price': 0.01,
-    'max_price': 5000.0,
-    'max_decimal_places_high': 2,  # For stocks >= $1
-    'max_decimal_places_low': 4,   # For stocks < $1
-}
+# Price Validation Settings - moved to line 145 to avoid duplication
 
 # Screener Settings
 SCREENER_CONFIG = {
