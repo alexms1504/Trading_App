@@ -32,9 +32,11 @@ except ImportError:
 # We draw candlesticks manually using matplotlib for better control
 
 from src.utils.logger import logger
-from src.core.chart_data_manager import chart_data_manager
+from src.services.chart_data_service import chart_data_manager
 from src.ui.price_levels import PriceLevelManager
-from src.core.chart_performance_optimizer import chart_cache, chart_optimizer, indicator_optimizer
+from src.services.technical_indicator_service import indicator_optimizer
+from src.ui.non_blocking_chart_updater import NonBlockingChartMixin
+from src.ui.optimized_chart_mixin import OptimizedChartMixin
 
 
 class CandlestickChart(FigureCanvas):
@@ -397,7 +399,8 @@ class CandlestickChart(FigureCanvas):
                 'times': [t.timestamp() for t in times]
             }
             
-            cached_indicators = chart_cache.get_cached_calculations("indicators", timeframe, [data_dict])
+            # Chart cache was removed during consolidation - skip caching for now
+            cached_indicators = None
             
             if cached_indicators:
                 # Use cached calculations
@@ -447,8 +450,8 @@ class CandlestickChart(FigureCanvas):
                 else:
                     vwap = None
                 
-                # Cache the calculations
-                chart_cache.store_calculations("indicators", timeframe, [data_dict], calculations)
+                # Chart cache was removed during consolidation - skip caching for now
+                # chart_cache.store_calculations("indicators", timeframe, [data_dict], calculations)
             
             # Plot EMAs if enabled
             if show_emas and ema5 is not None:
@@ -570,7 +573,7 @@ class CandlestickChart(FigureCanvas):
         self.draw_idle()
 
 
-class ChartWidget(QWidget):
+class ChartWidget(QWidget, NonBlockingChartMixin, OptimizedChartMixin):
     """
     Interactive candlestick chart widget for trading analysis
     Uses matplotlib for embedded charts in PyQt6
@@ -601,12 +604,24 @@ class ChartWidget(QWidget):
         # Price level management
         self.price_level_manager = None
         
+        # Reference to order assistant for order type checking
+        self.order_assistant = None
+        
         # Prevent excessive refreshing
         self._last_refresh_time = 0
         self._min_refresh_interval = 2000  # Minimum 2 seconds between refreshes
+        self._is_loading = False  # Prevent concurrent loads
+        
+        # Initialize non-blocking and real-time optimizations
+        self.init_non_blocking_updates()
+        self.init_real_time_optimization()
         
         self.init_ui()
         self.setup_connections()
+        
+        # Trigger default 5s auto-refresh
+        self.on_auto_refresh_changed('5s')
+        
         self.setup_price_levels()
         
         if not CHARTS_AVAILABLE:
@@ -707,7 +722,7 @@ class ChartWidget(QWidget):
         # Auto-refresh (compact)
         self.auto_refresh_combo = QComboBox()
         self.auto_refresh_combo.addItems(['Off', '5s', '10s', '30s', '1m'])
-        self.auto_refresh_combo.setCurrentText('Off')
+        self.auto_refresh_combo.setCurrentText('5s')
         self.auto_refresh_combo.setMaximumWidth(50)
         self.auto_refresh_combo.setMaximumHeight(28)
         layout.addWidget(self.auto_refresh_combo)
@@ -873,6 +888,14 @@ class ChartWidget(QWidget):
             # Clear cache to force fresh data for new symbol
             self.chart_manager.clear_cache()
             
+            # Enable real-time mode for improved performance 
+            if hasattr(self, 'enable_real_time_mode'):
+                real_time_success = self.enable_real_time_mode(self.current_symbol)
+                if real_time_success:
+                    logger.info(f"Real-time mode enabled for {self.current_symbol}")
+                else:
+                    logger.info(f"Real-time mode not available for {self.current_symbol}, using standard updates")
+            
             # Load chart data
             self.load_chart_data()
             
@@ -931,9 +954,26 @@ class ChartWidget(QWidget):
         if not self.current_symbol or not CHARTS_AVAILABLE:
             return
             
+        # Prevent concurrent loads
+        if self._is_loading:
+            logger.warning("Chart data load already in progress, skipping...")
+            return
+            
         try:
+            self._is_loading = True
             self.status_label.setText("Loading chart data...")
             
+            # Defer the actual loading to avoid blocking
+            QTimer.singleShot(500, self._do_load_chart_data)
+            
+        except Exception as e:
+            logger.error(f"Error initiating chart data load: {str(e)}")
+            self.status_label.setText(f"Error loading data: {str(e)}")
+            self._is_loading = False
+            
+    def _do_load_chart_data(self):
+        """Actually load the chart data (called after a short delay)"""
+        try:
             # Get chart data from manager
             chart_data = self.chart_manager.get_chart_data(
                 self.current_symbol, 
@@ -952,6 +992,8 @@ class ChartWidget(QWidget):
         except Exception as e:
             logger.error(f"Error loading chart data: {str(e)}")
             self.status_label.setText(f"Error loading data: {str(e)}")
+        finally:
+            self._is_loading = False
             
     def update_chart_display(self, chart_data: List[Dict[str, Any]]):
         """
@@ -970,24 +1012,73 @@ class ChartWidget(QWidget):
             saved_entry = None
             saved_stop_loss = None
             saved_take_profit = None
+            saved_limit_price = None
+            saved_target_prices = None
             
             if self.price_level_manager:
                 saved_entry = self.price_level_manager.entry_price
                 saved_stop_loss = self.price_level_manager.stop_loss_price
                 saved_take_profit = self.price_level_manager.take_profit_price
+                saved_limit_price = self.price_level_manager.limit_price
+                saved_target_prices = self.price_level_manager.target_prices.copy() if self.price_level_manager.target_prices else None
             
-            # Plot the data using matplotlib with indicator settings
-            self.chart_canvas.plot_candlestick_data(
-                chart_data, 
+            # Use non-blocking chart updates to eliminate UI freeze
+            logger.info("Using non-blocking chart update to eliminate UI freeze")
+            
+            # Store chart data for later price level restoration
+            self._pending_chart_data = chart_data
+            self._pending_price_levels = {
+                'entry': saved_entry,
+                'stop_loss': saved_stop_loss, 
+                'take_profit': saved_take_profit,
+                'limit_price': saved_limit_price,
+                'target_prices': saved_target_prices
+            }
+            
+            # Convert chart data format for non-blocking updater if needed
+            formatted_data = []
+            for bar in chart_data:
+                formatted_data.append({
+                    'time': bar.get('time', 0),
+                    'open': bar.get('open', 0),
+                    'high': bar.get('high', 0), 
+                    'low': bar.get('low', 0),
+                    'close': bar.get('close', 0),
+                    'volume': bar.get('volume', 0)
+                })
+            
+            # Update chart without blocking UI - this eliminates the 0.5s freeze
+            self.update_chart_non_blocking(
+                formatted_data,
                 self.current_symbol, 
                 self.current_timeframe,
-                self.show_emas,
-                self.show_smas,
-                self.show_vwap
+                show_emas=self.show_emas,
+                show_smas=self.show_smas,
+                show_vwap=self.show_vwap
             )
             
-            # Restore price levels after plotting
-            if self.price_level_manager and (saved_entry or saved_stop_loss or saved_take_profit):
+            # Price level restoration will be handled asynchronously after chart completes
+            # This prevents the 0.5s UI freeze by deferring non-critical operations
+            logger.info(f"Price levels stored for async restoration: Entry: {saved_entry}, SL: {saved_stop_loss}, TP: {saved_take_profit}, Limit: {saved_limit_price}")
+                
+        except Exception as e:
+            logger.error(f"Error updating chart display: {str(e)}")
+    
+    def on_non_blocking_chart_complete(self):
+        """Called when non-blocking chart update completes - restore price levels"""
+        try:
+            # Restore price levels after asynchronous chart rendering
+            if (hasattr(self, '_pending_price_levels') and 
+                self._pending_price_levels and 
+                self.price_level_manager):
+                
+                levels = self._pending_price_levels
+                saved_entry = levels.get('entry')
+                saved_stop_loss = levels.get('stop_loss')
+                saved_take_profit = levels.get('take_profit')
+                saved_limit_price = levels.get('limit_price')
+                saved_target_prices = levels.get('target_prices')
+                
                 # Re-set chart references in case axes were recreated
                 if isinstance(self.chart_canvas, CandlestickChart):
                     self.price_level_manager.set_chart_references(
@@ -998,19 +1089,43 @@ class ChartWidget(QWidget):
                     # Reconnect drag events since the canvas was redrawn
                     self.price_level_manager.connect_drag_events()
                 
+                # Only restore limit_price if current order type is STOP LIMIT
+                restore_limit_price = saved_limit_price if self.is_current_order_type_stop_limit() else None
+                
+                if restore_limit_price != saved_limit_price:
+                    if saved_limit_price and not restore_limit_price:
+                        logger.info(f"Async chart complete: NOT restoring limit price ${saved_limit_price:.2f} because order type is not STOP LIMIT")
+                    elif restore_limit_price:
+                        logger.info(f"Async chart complete: Restoring limit price ${restore_limit_price:.2f} because order type is STOP LIMIT")
+                
                 # Restore the price levels
                 self.price_level_manager.update_price_levels(
                     entry=saved_entry,
                     stop_loss=saved_stop_loss,
-                    take_profit=saved_take_profit
+                    take_profit=saved_take_profit,
+                    limit_price=restore_limit_price,
+                    target_prices=saved_target_prices
                 )
                 
-                # Always rescale to include the restored price levels after chart replot
-                self._rescale_to_include_price_levels(chart_data, saved_entry, saved_stop_loss, saved_take_profit)
-                logger.info("Applied smart rescaling after chart data update with restored price levels")
+                # Rescale to include the restored price levels
+                if hasattr(self, '_pending_chart_data') and self._pending_chart_data:
+                    self._rescale_to_include_price_levels(
+                        self._pending_chart_data, 
+                        saved_entry, 
+                        saved_stop_loss, 
+                        saved_take_profit, 
+                        restore_limit_price, 
+                        saved_target_prices
+                    )
+                    
+                logger.info(f"Async chart complete: Restored price levels - Entry: {saved_entry}, SL: {saved_stop_loss}, TP: {saved_take_profit}, Limit: {restore_limit_price}")
+                
+                # Clear pending data
+                self._pending_price_levels = None
+                self._pending_chart_data = None
                 
         except Exception as e:
-            logger.error(f"Error updating chart display: {str(e)}")
+            logger.error(f"Error restoring price levels after async chart update: {e}")
             
     def refresh_chart(self):
         """Refresh chart data with throttling to prevent excessive updates"""
@@ -1055,6 +1170,12 @@ class ChartWidget(QWidget):
                         price_levels.append(self.price_level_manager.stop_loss_price)
                     if self.price_level_manager.take_profit_price:
                         price_levels.append(self.price_level_manager.take_profit_price)
+                    # Include limit price if it's valid and positive
+                    if self.price_level_manager.limit_price and self.price_level_manager.limit_price > 0:
+                        price_levels.append(self.price_level_manager.limit_price)
+                    # Include target prices
+                    if self.price_level_manager.target_prices:
+                        price_levels.extend([price for price in self.price_level_manager.target_prices if price and price > 0])
                 
                 # Expand range to include price levels
                 if price_levels:
@@ -1120,7 +1241,9 @@ class ChartWidget(QWidget):
     def _rescale_to_include_price_levels(self, chart_data: List[Dict[str, Any]], 
                                        entry: Optional[float] = None,
                                        stop_loss: Optional[float] = None, 
-                                       take_profit: Optional[float] = None):
+                                       take_profit: Optional[float] = None,
+                                       limit_price: Optional[float] = None,
+                                       target_prices: Optional[list] = None):
         """Rescale chart to include both chart data and price levels"""
         try:
             if not CHARTS_AVAILABLE or not self.chart_canvas or not isinstance(self.chart_canvas, CandlestickChart):
@@ -1133,8 +1256,17 @@ class ChartWidget(QWidget):
             data_price_min = min(d['low'] for d in chart_data)
             data_price_max = max(d['high'] for d in chart_data)
             
-            # Include price levels in range calculation
-            price_levels = [price for price in [entry, stop_loss, take_profit] if price is not None]
+            # Include price levels in range calculation (exclude limit_price if <= 0 to prevent chart scaling to 0)
+            price_levels = []
+            for price in [entry, stop_loss, take_profit]:
+                if price is not None:
+                    price_levels.append(price)
+            # Only include limit_price if it's a valid positive price (0 means cleared/disabled)
+            if limit_price is not None and limit_price > 0:
+                price_levels.append(limit_price)
+            # Add target prices to the list
+            if target_prices:
+                price_levels.extend([price for price in target_prices if price is not None and price > 0])
             
             if price_levels:
                 # Expand range to include price levels
@@ -1177,6 +1309,17 @@ class ChartWidget(QWidget):
     def get_current_timeframe(self) -> str:
         """Get current chart timeframe"""
         return self.current_timeframe
+        
+    def set_order_assistant_reference(self, order_assistant):
+        """Set reference to order assistant for order type checking"""
+        self.order_assistant = order_assistant
+        logger.info("Order assistant reference set for chart widget")
+        
+    def is_current_order_type_stop_limit(self) -> bool:
+        """Check if current order type is STOP LIMIT"""
+        if self.order_assistant and hasattr(self.order_assistant, 'stop_limit_button'):
+            return self.order_assistant.stop_limit_button.isChecked()
+        return False
         
     def setup_price_levels(self):
         """Setup price level management for interactive lines"""
@@ -1247,12 +1390,14 @@ class ChartWidget(QWidget):
     def update_price_levels(self, entry: Optional[float] = None,
                           stop_loss: Optional[float] = None,
                           take_profit: Optional[float] = None,
+                          limit_price: Optional[float] = None,
+                          target_prices: Optional[list] = None,
                           auto_rescale: bool = False):
         """Update price levels on the chart (called from Order Assistant)"""
         try:
             if self.price_level_manager:
-                self.price_level_manager.update_price_levels(entry, stop_loss, take_profit)
-                logger.info(f"Updated chart price levels - Entry: {entry}, SL: {stop_loss}, TP: {take_profit}")
+                self.price_level_manager.update_price_levels(entry, stop_loss, take_profit, limit_price, target_prices)
+                logger.info(f"Updated chart price levels - Entry: {entry}, SL: {stop_loss}, TP: {take_profit}, Limit: {limit_price}, Targets: {target_prices}")
                 
                 # Always check if rescaling is needed when price levels are updated
                 if self.chart_canvas and hasattr(self.chart_canvas, 'current_data') and self.chart_canvas.current_data:
@@ -1267,7 +1412,17 @@ class ChartWidget(QWidget):
                     
                     # Check if any price level is outside current view
                     y_min, y_max = self.chart_canvas.price_ax.get_ylim()
-                    price_levels = [price for price in [entry, stop_loss, take_profit] if price is not None]
+                    # Include valid price levels (exclude limit_price if <= 0 to prevent chart scaling to 0)
+                    price_levels = []
+                    for price in [entry, stop_loss, take_profit]:
+                        if price is not None:
+                            price_levels.append(price)
+                    # Only include limit_price if it's a valid positive price (0 means cleared/disabled)
+                    if limit_price is not None and limit_price > 0:
+                        price_levels.append(limit_price)
+                    # Add target prices to the list
+                    if target_prices:
+                        price_levels.extend([price for price in target_prices if price is not None and price > 0])
                     
                     needs_rescale = False
                     if price_levels:
@@ -1284,7 +1439,7 @@ class ChartWidget(QWidget):
                     
                     if needs_rescale or auto_rescale:
                         # Use smart rescaling that includes both data and price levels
-                        self._rescale_to_include_price_levels(self.chart_canvas.current_data, entry, stop_loss, take_profit)
+                        self._rescale_to_include_price_levels(self.chart_canvas.current_data, entry, stop_loss, take_profit, limit_price, target_prices)
                 
         except Exception as e:
             logger.error(f"Error updating price levels: {e}")
@@ -1302,7 +1457,18 @@ class ChartWidget(QWidget):
         """Cleanup resources"""
         try:
             self.update_timer.stop()
+            
+            # Cleanup non-blocking chart updater
+            if hasattr(self, 'cleanup_non_blocking'):
+                self.cleanup_non_blocking()
+                
+            # Cleanup real-time optimization
+            if hasattr(self, 'disable_real_time_mode'):
+                self.disable_real_time_mode()
+                
             if self.chart_canvas:
                 plt.close('all')  # Close all matplotlib figures
+                
+            logger.info("Chart widget cleanup completed - non-blocking updates disabled")
         except Exception as e:
             logger.error(f"Error during chart cleanup: {str(e)}")

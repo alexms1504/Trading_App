@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from ib_async import ScannerSubscription, ScanData, TagValue
 
 from src.utils.logger import logger
-from src.core.ib_connection import ib_connection_manager
+from src.services.ib_connection_service import ib_connection_manager
 
 
 @dataclass
@@ -53,7 +53,12 @@ class MarketScreener:
     def set_criteria(self, criteria: ScreeningCriteria):
         """Set new screening criteria"""
         self.criteria = criteria
-        logger.info(f"Updated screening criteria: {criteria}")
+        logger.info(f"Config - Updated screening criteria:")
+        logger.info(f"   Volume - Scan Code: {criteria.scan_code}")
+        logger.info(f"   Price - Price Range: ${criteria.above_price} - ${criteria.below_price}")
+        logger.info(f"   Chart - Volume Min: ${criteria.above_volume:,}")
+        logger.info(f"   Building - Market Cap: {criteria.market_cap_above} - {criteria.market_cap_below}")
+        logger.info(f"   Lightning - Exclude Convertible: {criteria.exclude_convertible}")
         
     def add_update_callback(self, callback: Callable[[List[ScanData]], None]):
         """Add callback to be called when results update"""
@@ -88,25 +93,33 @@ class MarketScreener:
             # Create filter tags based on criteria
             filter_options = []
             
-            # Price filters
+            # Price filters with enhanced logging
             if self.criteria.above_price:
-                filter_options.append(TagValue("abovePrice", str(self.criteria.above_price)))
+                filter_options.append(TagValue("priceAbove", str(self.criteria.above_price)))
+                logger.info(f"Target - Price filter: above ${self.criteria.above_price}")
             if self.criteria.below_price and self.criteria.below_price < 999999:
-                filter_options.append(TagValue("belowPrice", str(self.criteria.below_price)))
+                filter_options.append(TagValue("priceBelow", str(self.criteria.below_price)))
+                logger.info(f"Target - Price filter: below ${self.criteria.below_price}")
+            else:
+                logger.info(f"Target - Price filter: no upper limit (below_price={self.criteria.below_price})")
                 
             # Volume filter (convert to shares from dollar volume)
             if self.criteria.above_volume:
-                # For dollar volume screening, we need to estimate shares
-                # This is approximate since we don't know the exact price
-                estimated_avg_price = (self.criteria.above_price + 10.0) / 2 if self.criteria.above_price else 5.0
+                # Use a more conservative average price estimate for better results
+                # Most active stocks are typically in the $10-50 range
+                if self.criteria.above_price and self.criteria.above_price > 1.0:
+                    estimated_avg_price = max(self.criteria.above_price * 2, 15.0)  # More conservative
+                else:
+                    estimated_avg_price = 15.0  # Reasonable average for active stocks
                 min_shares = int(self.criteria.above_volume / estimated_avg_price)
-                filter_options.append(TagValue("aboveVolume", str(min_shares)))
+                logger.info(f"Volume filter: ${self.criteria.above_volume:,} USD ÷ ${estimated_avg_price:.2f} avg price = {min_shares:,} shares minimum")
+                filter_options.append(TagValue("volumeAbove", str(min_shares)))
                 
             # Market cap filters
             if self.criteria.market_cap_above:
-                filter_options.append(TagValue("marketCapAbove", str(self.criteria.market_cap_above)))
+                filter_options.append(TagValue("usdMarketCapAbove", str(self.criteria.market_cap_above)))
             if self.criteria.market_cap_below:
-                filter_options.append(TagValue("marketCapBelow", str(self.criteria.market_cap_below)))
+                filter_options.append(TagValue("usdMarketCapBelow", str(self.criteria.market_cap_below)))
                 
             # Exclude convertible bonds
             if self.criteria.exclude_convertible:
@@ -164,17 +177,26 @@ class MarketScreener:
             # Create filter tags based on criteria
             filter_options = []
             
-            # Price filters
+            # Price filters with enhanced logging
             if self.criteria.above_price:
-                filter_options.append(TagValue("abovePrice", str(self.criteria.above_price)))
+                filter_options.append(TagValue("priceAbove", str(self.criteria.above_price)))
+                logger.info(f"Target - Price filter: above ${self.criteria.above_price}")
             if self.criteria.below_price and self.criteria.below_price < 999999:
-                filter_options.append(TagValue("belowPrice", str(self.criteria.below_price)))
+                filter_options.append(TagValue("priceBelow", str(self.criteria.below_price)))
+                logger.info(f"Target - Price filter: below ${self.criteria.below_price}")
+            else:
+                logger.info(f"Target - Price filter: no upper limit (below_price={self.criteria.below_price})")
                 
             # Volume filter (convert to shares from dollar volume)
             if self.criteria.above_volume:
-                estimated_avg_price = (self.criteria.above_price + 10.0) / 2 if self.criteria.above_price else 5.0
+                # Use improved average price estimate for better results
+                if self.criteria.above_price and self.criteria.above_price > 1.0:
+                    estimated_avg_price = max(self.criteria.above_price * 2, 15.0)  # More conservative
+                else:
+                    estimated_avg_price = 15.0  # Reasonable average for active stocks
                 min_shares = int(self.criteria.above_volume / estimated_avg_price)
-                filter_options.append(TagValue("aboveVolume", str(min_shares)))
+                logger.info(f"Volume filter: ${self.criteria.above_volume:,} USD ÷ ${estimated_avg_price:.2f} avg price = {min_shares:,} shares minimum")
+                filter_options.append(TagValue("volumeAbove", str(min_shares)))
                 
             # Set the filter options on the subscription object
             self.active_subscription.scannerSubscriptionFilterOptions = filter_options
@@ -236,6 +258,17 @@ class MarketScreener:
             self.current_results = results
             logger.info(f"Received {len(results)} screening results")
             
+            # Enhanced logging for troubleshooting
+            if len(results) == 0:
+                logger.warning("Warning - ZERO SCREENING RESULTS RECEIVED!")
+                logger.warning(f"Applied criteria: scan_code={self.criteria.scan_code}, "
+                              f"above_price=${self.criteria.above_price}, "
+                              f"below_price=${self.criteria.below_price}, "
+                              f"above_volume=${self.criteria.above_volume:,}")
+                logger.warning("Consider reducing volume requirement or adjusting price range")
+            elif len(results) < 5:
+                logger.warning(f"Warning - Only {len(results)} results - consider loosening filters")
+            
             # Log top results with enhanced debugging
             for i, result in enumerate(results[:3]):  # Log top 3 to avoid spam
                 try:
@@ -289,11 +322,15 @@ class MarketScreener:
             if not ib:
                 return {}
                 
-            logger.info(f"Fetching real market data for {len(symbols)} symbols from scanner")
+            logger.info(f"Fetching real market data for up to {price_limit} symbols from {len(symbols)} scanner results")
             
             # Create contracts for symbols
             contracts = []
-            for symbol in symbols[:5]:  # Limit to 5 symbols to avoid overwhelming the API
+            # Import config for price fetch limit
+            from config import SCREENER_CONFIG
+            price_limit = SCREENER_CONFIG.get('real_price_limit', 20)
+            
+            for symbol in symbols[:price_limit]:  # Fetch prices for configurable number of symbols
                 try:
                     from ib_async import Stock
                     contract = Stock(symbol, 'SMART', 'USD')
@@ -325,8 +362,8 @@ class MarketScreener:
             if not tickers:
                 return {}
                 
-            # Wait for data to populate
-            ib.sleep(2)  # Give time for market data to arrive
+            # Wait for data to populate with progressive timeout
+            ib.sleep(1.2)  # Optimized wait time for market data
             
             # Extract price and change data
             for symbol, ticker in tickers:
@@ -384,8 +421,11 @@ class MarketScreener:
         formatted_results = []
         
         # Get symbols for price fetching
+        from config import SCREENER_CONFIG
+        format_limit = SCREENER_CONFIG.get('real_price_limit', 20)
+        
         symbols = []
-        for result in self.current_results[:10]:  # Limit to top 10
+        for result in self.current_results[:format_limit]:  # Use configurable limit
             try:
                 contract = result.contractDetails.contract
                 symbols.append(contract.symbol)
@@ -542,17 +582,26 @@ class MarketScreener:
             # Create filter tags based on criteria
             filter_options = []
             
-            # Price filters
+            # Price filters with enhanced logging
             if self.criteria.above_price:
-                filter_options.append(TagValue("abovePrice", str(self.criteria.above_price)))
+                filter_options.append(TagValue("priceAbove", str(self.criteria.above_price)))
+                logger.info(f"Target - Price filter: above ${self.criteria.above_price}")
             if self.criteria.below_price and self.criteria.below_price < 999999:
-                filter_options.append(TagValue("belowPrice", str(self.criteria.below_price)))
+                filter_options.append(TagValue("priceBelow", str(self.criteria.below_price)))
+                logger.info(f"Target - Price filter: below ${self.criteria.below_price}")
+            else:
+                logger.info(f"Target - Price filter: no upper limit (below_price={self.criteria.below_price})")
                 
-            # Volume filter
+            # Volume filter (convert to shares from dollar volume)
             if self.criteria.above_volume:
-                estimated_avg_price = (self.criteria.above_price + 10.0) / 2 if self.criteria.above_price else 5.0
+                # Use improved average price estimate for better results
+                if self.criteria.above_price and self.criteria.above_price > 1.0:
+                    estimated_avg_price = max(self.criteria.above_price * 2, 15.0)  # More conservative
+                else:
+                    estimated_avg_price = 15.0  # Reasonable average for active stocks
                 min_shares = int(self.criteria.above_volume / estimated_avg_price)
-                filter_options.append(TagValue("aboveVolume", str(min_shares)))
+                logger.info(f"Volume filter: ${self.criteria.above_volume:,} USD ÷ ${estimated_avg_price:.2f} avg price = {min_shares:,} shares minimum")
+                filter_options.append(TagValue("volumeAbove", str(min_shares)))
                 
             # Update filter options on the subscription
             self.active_subscription.scannerSubscriptionFilterOptions = filter_options

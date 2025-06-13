@@ -20,6 +20,7 @@ class PriceLevelManager(QObject):
     entry_changed = pyqtSignal(float)  # Emitted when entry price is dragged
     stop_loss_changed = pyqtSignal(float)  # Emitted when stop loss is dragged
     take_profit_changed = pyqtSignal(float)  # Emitted when take profit is dragged
+    limit_price_changed = pyqtSignal(float)  # Emitted when limit price is dragged
     drag_completed = pyqtSignal()  # Emitted when drag operation completes
     
     def __init__(self):
@@ -29,11 +30,15 @@ class PriceLevelManager(QObject):
         self.entry_price = None
         self.stop_loss_price = None
         self.take_profit_price = None
+        self.limit_price = None
+        self.target_prices = []  # Multiple targets
         
         # Line objects (matplotlib)
         self.entry_line = None
         self.stop_loss_line = None
         self.take_profit_line = None
+        self.limit_price_line = None
+        self.target_lines = []  # Multiple target lines
         
         # Drag state
         self.dragging = False
@@ -56,13 +61,17 @@ class PriceLevelManager(QObject):
         self.entry_line = None
         self.stop_loss_line = None
         self.take_profit_line = None
+        self.limit_price_line = None
+        self.target_lines = []
         
         self.chart_ax = ax
         self.chart_canvas = canvas
         
     def update_price_levels(self, entry: Optional[float] = None, 
                           stop_loss: Optional[float] = None,
-                          take_profit: Optional[float] = None):
+                          take_profit: Optional[float] = None,
+                          limit_price: Optional[float] = None,
+                          target_prices: Optional[list] = None):
         """
         Update price level values and redraw lines
         
@@ -70,18 +79,45 @@ class PriceLevelManager(QObject):
             entry: Entry price
             stop_loss: Stop loss price
             take_profit: Take profit price
+            limit_price: Limit price (for STOP LIMIT orders)
+            target_prices: List of multiple target prices
         """
         try:
             if not self.chart_ax:
                 return
+                
+            # Log the update request for debugging
+            logger.debug(f"update_price_levels called - entry: {entry}, stop_loss: {stop_loss}, "
+                        f"take_profit: {take_profit}, limit_price: {limit_price}, "
+                        f"current_limit_price: {self.limit_price}")
                 
             # Update values
             if entry is not None:
                 self.entry_price = entry
             if stop_loss is not None:
                 self.stop_loss_price = stop_loss
+            # Handle take_profit: explicitly clear when None is passed
+            # This ensures single take profit line disappears when multiple targets are enabled
             if take_profit is not None:
                 self.take_profit_price = take_profit
+            else:
+                # If None is passed, clear the take profit to hide single green line
+                self.take_profit_price = None
+            # Update limit_price handling:
+            # - If None is passed, keep existing limit_price (don't clear it)
+            # - If 0 or negative is passed, clear the limit_price
+            # - Otherwise, update to the new value
+            if limit_price is not None:
+                if limit_price <= 0:
+                    self.limit_price = None  # Clear limit price
+                    logger.debug("Cleared limit price (value was <= 0)")
+                else:
+                    self.limit_price = limit_price
+                    logger.debug(f"Updated limit price to: {limit_price}")
+            else:
+                logger.debug(f"Keeping existing limit price: {self.limit_price}")
+            if target_prices is not None:
+                self.target_prices = target_prices
                 
             # Redraw lines
             self._draw_price_lines()
@@ -114,6 +150,19 @@ class PriceLevelManager(QObject):
                 except:
                     pass  # Line might already be removed
                 self.take_profit_line = None
+            if self.limit_price_line:
+                try:
+                    self.limit_price_line.remove()
+                except:
+                    pass  # Line might already be removed
+                self.limit_price_line = None
+            # Remove existing target lines
+            for line in self.target_lines:
+                try:
+                    line.remove()
+                except:
+                    pass
+            self.target_lines = []
                 
             # Get x-axis limits
             xlim = self.chart_ax.get_xlim()
@@ -150,6 +199,33 @@ class PriceLevelManager(QObject):
                     alpha=0.8,
                     label=f'Take Profit: ${self.take_profit_price:.2f}'
                 )
+                
+            # Draw limit price line (orange, for STOP LIMIT orders)
+            if self.limit_price:
+                self.limit_price_line = self.chart_ax.axhline(
+                    y=self.limit_price,
+                    color='#FF9800',  # Orange
+                    linestyle=':',
+                    linewidth=1.5,
+                    alpha=0.8,
+                    label=f'Limit Price: ${self.limit_price:.2f}'
+                )
+                
+            # Draw multiple target lines (purple/magenta shades)
+            if self.target_prices:
+                target_colors = ['#9C27B0', '#E91E63', '#673AB7']  # Purple, Pink, Deep Purple
+                for i, target_price in enumerate(self.target_prices):
+                    if target_price and target_price > 0:
+                        color = target_colors[i % len(target_colors)]
+                        target_line = self.chart_ax.axhline(
+                            y=target_price,
+                            color=color,
+                            linestyle='-.',
+                            linewidth=1.5,
+                            alpha=0.8,
+                            label=f'Target {i+1}: ${target_price:.2f}'
+                        )
+                        self.target_lines.append(target_line)
                 
             # Save background for blitting optimization
             if self._use_blitting and hasattr(self.chart_canvas, 'copy_from_bbox'):
@@ -188,6 +264,18 @@ class PriceLevelManager(QObject):
                         self.take_profit_line.remove()
                     except:
                         pass
+                if self.limit_price_line:
+                    try:
+                        self.limit_price_line.remove()
+                    except:
+                        pass
+                # Remove target lines
+                for line in self.target_lines:
+                    try:
+                        line.remove()
+                    except:
+                        pass
+                self.target_lines = []
                 
                 # Redraw price lines
                 if self.entry_price:
@@ -219,6 +307,32 @@ class PriceLevelManager(QObject):
                         alpha=0.8
                     )
                     self.chart_ax.draw_artist(self.take_profit_line)
+                    
+                if self.limit_price:
+                    self.limit_price_line = self.chart_ax.axhline(
+                        y=self.limit_price,
+                        color='#FF9800',
+                        linestyle=':',
+                        linewidth=1.5,
+                        alpha=0.8
+                    )
+                    self.chart_ax.draw_artist(self.limit_price_line)
+                    
+                # Draw target lines
+                if self.target_prices:
+                    target_colors = ['#9C27B0', '#E91E63', '#673AB7']
+                    for i, target_price in enumerate(self.target_prices):
+                        if target_price and target_price > 0:
+                            color = target_colors[i % len(target_colors)]
+                            target_line = self.chart_ax.axhline(
+                                y=target_price,
+                                color=color,
+                                linestyle='-.',
+                                linewidth=1.5,
+                                alpha=0.8
+                            )
+                            self.chart_ax.draw_artist(target_line)
+                            self.target_lines.append(target_line)
                 
                 # Blit only the changed areas
                 self.chart_canvas.blit(self.chart_ax.figure.bbox)
@@ -253,11 +367,26 @@ class PriceLevelManager(QObject):
                 except:
                     pass
                 self.take_profit_line = None
+            if self.limit_price_line:
+                try:
+                    self.limit_price_line.remove()
+                except:
+                    pass
+                self.limit_price_line = None
+            # Remove target lines
+            for line in self.target_lines:
+                try:
+                    line.remove()
+                except:
+                    pass
+            self.target_lines = []
                 
             # Clear values
             self.entry_price = None
             self.stop_loss_price = None
             self.take_profit_price = None
+            self.limit_price = None
+            self.target_prices = []
             
             # Redraw
             if self.chart_canvas:

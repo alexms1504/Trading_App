@@ -4,17 +4,18 @@ PyQt6>=6.4.0  # GUI framework
 python-dotenv>=0.21.0  # Environment variables
 
 # Charting
-lightweight-charts-python>=1.0.16  # Lightweight charts
-plotly>=5.17.0  # Alternative charting
-kaleido>=0.2.1  # Static image export for plotly
-mplfinance>=0.12.9  # Financial charts with matplotlib
+# lightweight-charts-python>=1.0.16  # Removed - unused chart implementations deleted
+# plotly>=5.17.0  # Removed - unused chart implementations deleted
+# kaleido>=0.2.1  # Removed - used with plotly
+mplfinance>=0.12.9  # Financial charts with matplotlib (used by chart_widget_embedded)
+matplotlib>=3.7.0  # Required for embedded charts
 
-# Google Integration
-google-auth>=2.23.0
-google-auth-oauthlib>=1.0.0
-google-auth-httplib2>=0.1.0
-google-api-python-client>=2.100.0
-gspread>=5.11.0  # Google Sheets API wrapper
+# Google Integration (Future - Trade Journal)
+# google-auth>=2.23.0
+# google-auth-oauthlib>=1.0.0
+# google-auth-httplib2>=0.1.0
+# google-api-python-client>=2.100.0
+# gspread>=5.11.0  # Google Sheets API wrapper
 
 # Image Processing
 Pillow>=10.0.0  # Image manipulation

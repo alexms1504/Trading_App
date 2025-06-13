@@ -2,3 +2,4 @@ tests/
 .claude
 credentials/
 data/
+backups/

@@ -17,7 +17,7 @@ from PyQt6.QtGui import QFont, QColor, QBrush
 
 from src.utils.logger import logger
 from src.core.market_screener import market_screener, ScreeningCriteria
-from src.core.simple_threaded_fetcher import simple_threaded_market_screener
+from src.services.unified_data_service import unified_data_service
 
 
 class ScreenerResultsModel(QAbstractTableModel):
@@ -117,7 +117,7 @@ class MarketScreenerWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.screener = market_screener
-        self.threaded_screener = simple_threaded_market_screener
+        self.threaded_screener = unified_data_service
         self.results_model = ScreenerResultsModel()
         self.update_timer = QTimer()
         self.is_screening = False
@@ -189,7 +189,7 @@ class MarketScreenerWidget(QWidget):
         layout.addWidget(QLabel("Min Volume:"), 1, 2)
         self.min_volume_spin = QSpinBox()
         self.min_volume_spin.setRange(1, 1000)
-        self.min_volume_spin.setValue(8)
+        self.min_volume_spin.setValue(8)  # $8M default
         self.min_volume_spin.setSuffix("M $")
         layout.addWidget(self.min_volume_spin, 1, 3)
         
@@ -367,6 +367,12 @@ class MarketScreenerWidget(QWidget):
         # Auto-refresh checkbox - CRITICAL FIX for "Real $" button disappearing
         self.auto_refresh_checkbox.toggled.connect(self.on_auto_refresh_toggled)
         
+        # Criteria change handlers - update results when criteria change during active screening
+        self.scan_type_combo.currentTextChanged.connect(self.on_criteria_changed)
+        self.min_price_spin.valueChanged.connect(self.on_criteria_changed)
+        self.max_price_spin.valueChanged.connect(self.on_criteria_changed)
+        self.min_volume_spin.valueChanged.connect(self.on_criteria_changed)
+        
         # Screener callbacks
         self.screener.add_update_callback(self.on_screener_update)
         
@@ -436,8 +442,28 @@ class MarketScreenerWidget(QWidget):
             self.status_label.setText("Refreshing...")
             self.status_label.setStyleSheet("color: blue; font-weight: bold;")
             
-            # Refresh using threaded approach (non-blocking)
-            self.threaded_screener.refresh_results_async()
+            # Create current criteria from UI - this ensures refresh uses current settings
+            scan_code = self.scan_type_combo.currentText()
+            min_price = self.min_price_spin.value()
+            max_price = self.max_price_spin.value()
+            min_volume_m = self.min_volume_spin.value()
+            min_volume_usd = min_volume_m * 1000000
+            
+            logger.info(f"Refresh - Refresh with current UI criteria:")
+            logger.info(f"   Target - Scan Type: {scan_code}")
+            logger.info(f"   Price - Min Price: ${min_price}")
+            logger.info(f"   Price - Max Price: ${max_price}")
+            logger.info(f"   Volume - Min Volume: {min_volume_m}M (${min_volume_usd:,})")
+            
+            criteria = ScreeningCriteria(
+                scan_code=scan_code,
+                above_price=min_price,
+                below_price=max_price,
+                above_volume=min_volume_usd
+            )
+            
+            # Refresh using threaded approach with current criteria
+            self.threaded_screener.update_criteria_and_refresh_async(criteria)
             
     def fetch_real_prices(self):
         """Fetch real market prices using threaded approach"""
@@ -669,6 +695,44 @@ class MarketScreenerWidget(QWidget):
                 
         except Exception as e:
             logger.error(f"Error toggling auto-refresh: {str(e)}")
+    
+    def on_criteria_changed(self):
+        """Handle criteria changes - update screening if active"""
+        try:
+            logger.info("Alert - on_criteria_changed() triggered")
+            if self.is_screening:
+                logger.info("Refresh - Screening criteria changed - updating results")
+                
+                # Read current UI values with detailed logging
+                scan_code = self.scan_type_combo.currentText()
+                min_price = self.min_price_spin.value()
+                max_price = self.max_price_spin.value()
+                min_volume_m = self.min_volume_spin.value()
+                min_volume_usd = min_volume_m * 1000000
+                
+                logger.info(f"List - Current UI values:")
+                logger.info(f"   Target - Scan Type: {scan_code}")
+                logger.info(f"   Price - Min Price: ${min_price}")
+                logger.info(f"   Price - Max Price: ${max_price}")
+                logger.info(f"   Volume - Min Volume: {min_volume_m}M (${min_volume_usd:,})")
+                
+                # Create new criteria from current UI values
+                criteria = ScreeningCriteria(
+                    scan_code=scan_code,
+                    above_price=min_price,
+                    below_price=max_price,
+                    above_volume=min_volume_usd
+                )
+                
+                # Update the criteria and restart screening with new parameters
+                self.threaded_screener.update_criteria_and_refresh_async(criteria)
+                
+                # Update status to show criteria changed
+                self.status_label.setText("Updating with new criteria...")
+                self.status_label.setStyleSheet("color: blue; font-weight: bold;")
+                
+        except Exception as e:
+            logger.error(f"Error handling criteria change: {str(e)}")
         
     def cleanup(self):
         """Cleanup resources when widget is destroyed"""

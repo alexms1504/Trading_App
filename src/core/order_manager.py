@@ -1,21 +1,22 @@
 """
-Order Manager
+Order Manager - Fixed Version
 Handles order creation, submission, and management for MVP
-Simplified synchronous version to avoid async complexity
+Fixed to properly handle IB bracket order structure
 """
 
 from typing import Dict, Optional, List, Tuple
 from datetime import datetime
+import asyncio
 
-from ib_async import Stock, Order, Trade, LimitOrder, StopOrder, MarketOrder, BracketOrder
+from ib_async import Stock, Order, Trade, LimitOrder, StopOrder, MarketOrder, BracketOrder, StopLimitOrder, util
 
 from src.utils.logger import logger
-from src.core.ib_connection import ib_connection_manager
+from src.services.ib_connection_service import ib_connection_manager
 
 
 class OrderManager:
     """
-    Simplified order manager for MVP - handles bracket order creation and submission
+    Fixed order manager for MVP - handles bracket order creation and submission
     """
     
     def __init__(self):
@@ -58,19 +59,21 @@ class OrderManager:
                            take_profit: float,
                            direction: str = 'BUY',
                            order_type: str = 'LMT',
-                           account: Optional[str] = None) -> Tuple[bool, str, Optional[List[Trade]]]:
+                           account: Optional[str] = None,
+                           limit_price: Optional[float] = None) -> Tuple[bool, str, Optional[List[Trade]]]:
         """
         Submit a bracket order (parent + stop loss + take profit)
         
         Args:
             symbol: Stock symbol
             quantity: Number of shares
-            entry_price: Entry price (for limit orders)
+            entry_price: Entry price (for limit orders) or stop price (for stop limit orders)
             stop_loss: Stop loss price
             take_profit: Take profit price
             direction: 'BUY' or 'SELL'
-            order_type: 'LMT' or 'MKT'
+            order_type: 'LMT', 'MKT', or 'STOPLMT'
             account: Account to use (optional)
+            limit_price: Limit price for STOP LIMIT orders (optional)
             
         Returns:
             Tuple of (success, message, trades)
@@ -84,8 +87,12 @@ class OrderManager:
             entry_price = self.round_price_to_tick_size(entry_price, symbol)
             stop_loss = self.round_price_to_tick_size(stop_loss, symbol)
             take_profit = self.round_price_to_tick_size(take_profit, symbol)
+            if limit_price is not None:
+                limit_price = self.round_price_to_tick_size(limit_price, symbol)
             
             logger.info(f"Rounded prices - Entry: {entry_price}, SL: {stop_loss}, TP: {take_profit}")
+            if limit_price is not None:
+                logger.info(f"Rounded limit price: {limit_price}")
             
             if not self.ib_manager.is_connected():
                 return False, "Not connected to IB", None
@@ -101,83 +108,168 @@ class OrderManager:
             contract = Stock(symbol, 'SMART', 'USD')
             
             # Qualify the contract to ensure it's valid
-            ib.qualifyContracts(contract)
+            qualified_contracts = ib.qualifyContracts(contract)
+            if qualified_contracts:
+                contract = qualified_contracts[0]
+                logger.info(f"Contract qualified: {contract.symbol} on {contract.exchange}")
+            else:
+                logger.error(f"Failed to qualify contract for {symbol}")
+                return False, f"Failed to qualify contract for {symbol}", None
             
             # Create bracket order using IB's method
             logger.info(f"Creating bracket order: {direction} {quantity} shares of {symbol}")
             logger.info(f"  Entry: {entry_price}, SL: {stop_loss}, TP: {take_profit}")
             
-            # CRITICAL FIX: For market orders, use None for limitPrice
+            # Create bracket order - always start with IB's bracketOrder method
+            bracket = ib.bracketOrder(
+                action=direction,
+                quantity=quantity,
+                limitPrice=entry_price,
+                takeProfitPrice=take_profit,
+                stopLossPrice=stop_loss
+            )
+            
+            # CRITICAL: Set up OCA group for child orders
+            # IB's bracketOrder doesn't always set OCA groups properly
+            if len(bracket) >= 3:
+                # Log the actual order structure to debug
+                logger.info("Analyzing bracket order structure:")
+                for i, order in enumerate(bracket):
+                    logger.info(f"  bracket[{i}]: orderType={order.orderType}, action={order.action}, "
+                              f"parentId={order.parentId}, transmit={order.transmit}")
+                
+                # Create unique OCA group
+                oca_group = f"OCA_{symbol}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                
+                # IB's bracketOrder returns: [parent, takeProfit, stopLoss]
+                # But let's verify by checking orderType
+                parent_idx = None
+                tp_idx = None
+                sl_idx = None
+                
+                for i, order in enumerate(bracket):
+                    if order.orderType == 'LMT' and order.parentId == 0:
+                        parent_idx = i
+                    elif order.orderType == 'LMT' and order.parentId > 0:
+                        tp_idx = i
+                    elif order.orderType == 'STP' and order.parentId > 0:
+                        sl_idx = i
+                
+                logger.info(f"Identified order indices - Parent: {parent_idx}, TP: {tp_idx}, SL: {sl_idx}")
+                
+                # Set OCA on take profit and stop loss ONLY (not parent)
+                if tp_idx is not None:
+                    bracket[tp_idx].ocaGroup = oca_group
+                    bracket[tp_idx].ocaType = 1
+                if sl_idx is not None:
+                    bracket[sl_idx].ocaGroup = oca_group
+                    bracket[sl_idx].ocaType = 1
+                
+                logger.info(f"Set OCA group '{oca_group}' on child orders")
+                
+                # Verify child orders have opposite action
+                opposite_action = 'SELL' if direction == 'BUY' else 'BUY'
+                for i in range(1, len(bracket)):
+                    if bracket[i].action != opposite_action:
+                        logger.warning(f"Child order {i} has wrong action: {bracket[i].action}, should be {opposite_action}")
+                        bracket[i].action = opposite_action
+                        logger.info(f"Corrected child order {i} action to {opposite_action}")
+            
+            # Now modify the parent order based on order type
             if order_type == 'MKT':
-                bracket = ib.bracketOrder(
-                    action=direction,
-                    quantity=quantity,
-                    limitPrice=None,  # No limit price for market orders
-                    takeProfitPrice=take_profit,
-                    stopLossPrice=stop_loss
-                )
-            else:
-                bracket = ib.bracketOrder(
-                    action=direction,
-                    quantity=quantity,
-                    limitPrice=entry_price,
-                    takeProfitPrice=take_profit,
-                    stopLossPrice=stop_loss
-                )
+                # Modify parent to be a market order
+                bracket[0].orderType = 'MKT'
+                bracket[0].lmtPrice = None
+                logger.info("Modified parent order to MARKET order")
+                
+            elif order_type == 'STOPLMT':
+                # Modify parent to be a stop limit order
+                bracket[0].orderType = 'STP LMT'
+                bracket[0].lmtPrice = limit_price  # Limit price when stop triggers
+                bracket[0].auxPrice = entry_price  # Stop trigger price
+                logger.info(f"Modified parent to STOP LIMIT - Stop: {entry_price}, Limit: {limit_price}")
+                
+            # else: LMT - no modification needed, already a limit order
             
             # Log the bracket order details
             logger.info(f"Bracket order created with {len(bracket)} orders:")
+            logger.info(f"Bracket structure: Parent[0], TakeProfit[1], StopLoss[2]")
             for i, order in enumerate(bracket):
-                logger.info(f"  Order {i}: Type={order.orderType}, Action={order.action}, "
-                          f"Quantity={order.totalQuantity}, ParentId={order.parentId}, "
-                          f"OcaGroup={order.ocaGroup}, Transmit={order.transmit}")
-                if hasattr(order, 'lmtPrice') and order.lmtPrice:
+                order_name = ["Parent", "TakeProfit", "StopLoss"][i] if i < 3 else f"Order{i}"
+                logger.info(f"  {order_name}: Type={order.orderType}, Action={order.action}, "
+                          f"Qty={order.totalQuantity}, ParentId={order.parentId}, "
+                          f"OCA={order.ocaGroup}, Transmit={order.transmit}")
+                if hasattr(order, 'lmtPrice') and order.lmtPrice is not None:
                     logger.info(f"    LimitPrice={order.lmtPrice}")
-                if hasattr(order, 'auxPrice') and order.auxPrice:
+                if hasattr(order, 'auxPrice') and order.auxPrice is not None:
                     logger.info(f"    StopPrice={order.auxPrice}")
-            
-            # Note: Market order handling is done in bracket creation above
-            logger.info(f"Bracket order type: {bracket.parent.orderType}")
                 
             # Set account on all orders if specified
             target_account = account or self.ib_manager.get_active_account()
             if target_account:
-                bracket.parent.account = target_account
-                bracket.stopLoss.account = target_account
-                bracket.takeProfit.account = target_account
+                for order in bracket:
+                    order.account = target_account
+                logger.info(f"Set account {target_account} on all bracket orders")
                 
-            # Check transmit flags before submission
-            logger.info("Checking transmit flags and order relationships:")
-            for i, order in enumerate(bracket):
-                logger.info(f"  Order {i} transmit flag: {order.transmit}")
-                logger.info(f"    ParentId: {order.parentId}, OcaGroup: {order.ocaGroup}")
-                
-            # CRITICAL FIX: Ensure proper transmit flag settings for bracket orders
-            # Only the last order should have transmit=True in a bracket
+            # Verify transmit flags and parent relationships
+            # IB's bracketOrder should set these correctly:
+            # Parent: transmit=False, TP: transmit=False, SL: transmit=True
             if len(bracket) >= 3:
-                logger.info("Correcting transmit flags for proper bracket submission...")
-                bracket[0].transmit = False  # Parent - don't transmit yet
-                bracket[1].transmit = False  # Stop loss - don't transmit yet  
-                bracket[2].transmit = True   # Take profit - transmit all at once
+                logger.info(f"Transmit flags: Parent={bracket[0].transmit}, TP={bracket[1].transmit}, SL={bracket[2].transmit}")
                 
-                logger.info("Updated transmit flags:")
-                for i, order in enumerate(bracket):
-                    logger.info(f"  Order {i} transmit flag: {order.transmit}")
+                # Ensure parent order has an ID
+                if not hasattr(bracket[0], 'orderId') or bracket[0].orderId == 0:
+                    bracket[0].orderId = ib.client.getReqId()
+                    logger.info(f"Assigned order ID {bracket[0].orderId} to parent order")
                 
-            # Place all orders in the bracket - EXACT pattern from example
+                parent_id = bracket[0].orderId
+                
+                # Ensure child orders reference the parent
+                for i in range(1, len(bracket)):
+                    if bracket[i].parentId == 0:
+                        bracket[i].parentId = parent_id
+                        logger.info(f"Set parentId={parent_id} on child order {i}")
+                
+                # Only adjust transmit flags if needed
+                if bracket[0].transmit or bracket[1].transmit or not bracket[2].transmit:
+                    logger.warning("Adjusting transmit flags...")
+                    bracket[0].transmit = False
+                    bracket[1].transmit = False  
+                    bracket[2].transmit = True
+                    logger.info("Transmit flags adjusted")
+                
+            # Place all orders in the bracket
             trades = []
             logger.info("Submitting orders to IB...")
+            
+            # Final verification before submission
+            logger.info("FINAL ORDER STRUCTURE BEFORE SUBMISSION:")
             for i, order in enumerate(bracket):
-                logger.info(f"Placing order {i} (Type={order.orderType}, Transmit={order.transmit})...")
+                order_name = ["Parent", "TakeProfit", "StopLoss"][i] if i < 3 else f"Order{i}"
+                logger.info(f"  {order_name} [{i}]:")
+                logger.info(f"    OrderType: {order.orderType}")
+                logger.info(f"    Action: {order.action}")
+                logger.info(f"    Quantity: {order.totalQuantity}")
+                logger.info(f"    ParentId: {order.parentId}")
+                logger.info(f"    OCA Group: '{order.ocaGroup}'")
+                logger.info(f"    OCA Type: {getattr(order, 'ocaType', 'Not set')}")
+                logger.info(f"    Transmit: {order.transmit}")
+                if hasattr(order, 'lmtPrice') and order.lmtPrice is not None:
+                    logger.info(f"    Limit Price: {order.lmtPrice}")
+                if hasattr(order, 'auxPrice') and order.auxPrice is not None:
+                    logger.info(f"    Stop Price: {order.auxPrice}")
+            
+            for i, order in enumerate(bracket):
+                order_name = ["Parent", "TakeProfit", "StopLoss"][i] if i < 3 else f"Order{i}"
+                logger.info(f"Placing {order_name} order...")
                 trade = ib.placeOrder(contract, order)
                 trades.append(trade)
                 self.active_orders[trade.order.orderId] = trade
-                logger.info(f"Placed order ID {trade.order.orderId}: {order.orderType} {order.action} {order.totalQuantity}")
-                logger.info(f"  Order status: {trade.orderStatus.status}")
+                logger.info(f"Placed {order_name} - ID: {trade.order.orderId}, Status: {trade.orderStatus.status if trade.orderStatus else 'Unknown'}")
             
             # Give IB time to process the orders
             logger.info("Waiting for IB to process orders...")
-            ib.sleep(1)
+            util.run(asyncio.sleep(1))
             
             # Check order statuses after submission
             logger.info("Order statuses after submission:")
@@ -185,19 +277,18 @@ class OrderManager:
             cancelled_orders = 0
             
             for i, trade in enumerate(trades):
-                status = trade.orderStatus.status
-                logger.info(f"  Trade {i} (ID={trade.order.orderId}): Status={status}")
+                order_name = ["Parent", "TakeProfit", "StopLoss"][i] if i < 3 else f"Order{i}"
+                status = trade.orderStatus.status if trade.orderStatus else 'Unknown'
+                logger.info(f"  {order_name} (ID={trade.order.orderId}): Status={status}")
                 
-                # Check for common issues
                 if status == 'PreSubmitted':
-                    logger.info(f"    Order {trade.order.orderId} is PreSubmitted (waiting for market hours or confirmation)")
+                    logger.info(f"    Order is PreSubmitted (waiting for market hours or confirmation)")
                     needs_confirmation = True
                 elif status == 'Cancelled':
                     cancelled_orders += 1
-                    why_held = getattr(trade.orderStatus, 'whyHeld', 'Unknown')
-                    logger.warning(f"    Order {trade.order.orderId} was CANCELLED: {why_held}")
+                    logger.warning(f"    Order was CANCELLED")
                 elif status == 'Inactive':
-                    logger.warning(f"    Order {trade.order.orderId} is INACTIVE - may need confirmation in TWS")
+                    logger.warning(f"    Order is INACTIVE - may need confirmation in TWS")
                     needs_confirmation = True
                     
             # Provide user guidance based on order status
@@ -209,32 +300,29 @@ class OrderManager:
                 logger.warning("Check: TWS -> Configuration -> API -> Settings -> 'Bypass Order Precautions for API Orders'")
                 
             # Check if all orders failed
-            active_orders = sum(1 for trade in trades if trade.orderStatus.status not in ['Cancelled', 'Inactive'])
+            active_orders = sum(1 for trade in trades if trade.orderStatus and trade.orderStatus.status not in ['Cancelled', 'Inactive'])
             if active_orders == 0:
                 logger.error("ERROR: All bracket orders were cancelled or inactive!")
-                logger.error("This usually means:")
-                logger.error("  1. TWS requires manual order confirmation (most common)")
-                logger.error("  2. Insufficient buying power")  
-                logger.error("  3. Market is closed for this instrument")
-                logger.error("  4. Account restrictions")
                 return False, "All orders were cancelled - check TWS configuration", trades
                 
-            # Log what we did
+            # Log summary
             logger.info(f"Bracket order submitted for {symbol}:")
-            logger.info(f"  Parent: {bracket.parent.orderType} {bracket.parent.action} {quantity} @ {'MKT' if order_type == 'MKT' else entry_price}")
-            logger.info(f"  Stop Loss: STP {bracket.stopLoss.action} {quantity} @ {stop_loss}")
-            logger.info(f"  Take Profit: LMT {bracket.takeProfit.action} {quantity} @ {take_profit}")
+            if len(trades) >= 3:
+                parent_order = trades[0].order
+                tp_order = trades[1].order
+                sl_order = trades[2].order
                 
-            # Log order details
+                logger.info(f"  Parent: {parent_order.orderType} {parent_order.action} {quantity} @ "
+                          f"{'MKT' if order_type == 'MKT' else entry_price}")
+                logger.info(f"  Take Profit: {tp_order.orderType} {tp_order.action} {quantity} @ {take_profit}")
+                logger.info(f"  Stop Loss: {sl_order.orderType} {sl_order.action} {quantity} @ {stop_loss}")
+                
+            # Log order IDs
             parent_id = trades[0].order.orderId if trades else None
             logger.info(f"Bracket order submission complete for {symbol}")
             logger.info(f"Total orders placed: {len(trades)}")
             if len(trades) >= 3:
-                logger.info(f"Parent: {trades[0].order.orderId}, Stop: {trades[1].order.orderId}, TP: {trades[2].order.orderId}")
-            else:
-                logger.warning(f"Expected 3 orders but only {len(trades)} were placed!")
-                for i, trade in enumerate(trades):
-                    logger.warning(f"  Trade {i}: ID={trade.order.orderId}, Type={trade.order.orderType}")
+                logger.info(f"Parent: {trades[0].order.orderId}, TP: {trades[1].order.orderId}, SL: {trades[2].order.orderId}")
             
             # Add to history
             self.order_history.append({
@@ -266,7 +354,8 @@ class OrderManager:
                                    profit_targets: List[Dict],
                                    direction: str = 'BUY',
                                    order_type: str = 'LMT',
-                                   account: Optional[str] = None) -> Tuple[bool, str, Optional[List[Trade]]]:
+                                   account: Optional[str] = None,
+                                   limit_price: Optional[float] = None) -> Tuple[bool, str, Optional[List[Trade]]]:
         """
         Submit multiple separate bracket orders for partial scaling
         Creates independent bracket orders for each profit target to avoid OCA cancellation
@@ -315,7 +404,13 @@ class OrderManager:
                 
             # Create contract
             contract = Stock(symbol, 'SMART', 'USD')
-            ib.qualifyContracts(contract)
+            qualified_contracts = ib.qualifyContracts(contract)
+            if qualified_contracts:
+                contract = qualified_contracts[0]
+                logger.info(f"Contract qualified for multiple targets: {contract.symbol} on {contract.exchange}")
+            else:
+                logger.error(f"Failed to qualify contract for {symbol}")
+                return False, f"Failed to qualify contract for {symbol}", None
             
             # Set account
             target_account = account or self.ib_manager.get_active_account()
@@ -327,11 +422,12 @@ class OrderManager:
             logger.info(f"Creating {len(profit_targets)} separate bracket orders...")
             
             for i, target in enumerate(profit_targets):
-                target_quantity = int(quantity * target['percent'] / 100)
+                # Use the pre-calculated quantity from order assistant (handles rounding correctly)
+                target_quantity = target.get('quantity', int(quantity * target['percent'] / 100))
                 if target_quantity <= 0:
                     continue
                     
-                logger.info(f"Creating bracket {i+1}: {target_quantity} shares @ {target['price']} ({target['percent']}%)")
+                logger.info(f"Creating bracket {i+1}: {target_quantity} shares @ {target['price']} ({target['percent']}%) [using corrected allocation]")
                 
                 # Create bracket order for this target
                 bracket = ib.bracketOrder(
@@ -342,22 +438,29 @@ class OrderManager:
                     stopLossPrice=stop_loss
                 )
                 
-                # Modify for market orders if needed
+                # Set up OCA group for this bracket
+                if len(bracket) >= 3:
+                    oca_group = f"OCA_{symbol}_{i}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
+                    bracket[1].ocaGroup = oca_group  # Take profit
+                    bracket[2].ocaGroup = oca_group  # Stop loss
+                    bracket[1].ocaType = 1
+                    bracket[2].ocaType = 1
+                    logger.info(f"Set OCA group '{oca_group}' for bracket {i+1}")
+                
+                # Modify for different order types
                 if order_type == 'MKT':
-                    bracket.parent.orderType = 'MKT'
-                    bracket.parent.lmtPrice = None
+                    bracket[0].orderType = 'MKT'
+                    bracket[0].lmtPrice = None
+                elif order_type == 'STOPLMT':
+                    bracket[0].orderType = 'STP LMT'
+                    bracket[0].lmtPrice = limit_price
+                    bracket[0].auxPrice = entry_price
                     
                 # Set account on all orders if specified
                 if target_account:
-                    bracket.parent.account = target_account
-                    bracket.stopLoss.account = target_account
-                    bracket.takeProfit.account = target_account
+                    for order in bracket:
+                        order.account = target_account
                     
-                # Set transmit flags correctly for bracket orders
-                bracket[0].transmit = False  # Parent - don't transmit yet
-                bracket[1].transmit = False  # Stop loss - don't transmit yet  
-                bracket[2].transmit = True   # Take profit - transmit all at once
-                
                 # Place all orders in this bracket
                 bracket_trades = []
                 logger.info(f"Submitting bracket {i+1} orders...")
@@ -378,11 +481,11 @@ class OrderManager:
                 })
                 
                 # Small delay between bracket submissions
-                ib.sleep(0.5)
+                util.run(asyncio.sleep(0.5))
             
             # Give IB time to process all orders
             logger.info("Waiting for IB to process all bracket orders...")
-            ib.sleep(2)
+            util.run(asyncio.sleep(2))
             
             # Log results
             logger.info(f"Multiple target orders submitted for {symbol}:")
@@ -460,29 +563,32 @@ class OrderManager:
         """Get list of active orders"""
         active = []
         for order_id, trade in self.active_orders.items():
-            if trade.orderStatus.status not in ['Filled', 'Cancelled', 'Inactive']:
+            if trade and hasattr(trade, 'orderStatus') and trade.orderStatus and trade.orderStatus.status not in ['Filled', 'Cancelled', 'Inactive']:
                 active.append({
                     'order_id': order_id,
                     'symbol': trade.contract.symbol,
                     'action': trade.order.action,
                     'quantity': trade.order.totalQuantity,
-                    'status': trade.orderStatus.status,
-                    'filled': trade.orderStatus.filled,
-                    'remaining': trade.orderStatus.remaining
+                    'status': trade.orderStatus.status if (trade and hasattr(trade, 'orderStatus') and trade.orderStatus) else 'Unknown',
+                    'filled': trade.orderStatus.filled if (trade and hasattr(trade, 'orderStatus') and trade.orderStatus) else 0,
+                    'remaining': trade.orderStatus.remaining if (trade and hasattr(trade, 'orderStatus') and trade.orderStatus) else 0
                 })
         return active
         
     def get_order_status(self, order_id: int) -> Optional[str]:
         """Get status of a specific order"""
         if order_id in self.active_orders:
-            return self.active_orders[order_id].orderStatus.status
+            trade = self.active_orders[order_id]
+            if trade and hasattr(trade, 'orderStatus') and trade.orderStatus:
+                return trade.orderStatus.status
+            return 'Unknown'
         return None
         
     def clear_filled_orders(self):
         """Remove filled and cancelled orders from active orders"""
         to_remove = []
         for order_id, trade in self.active_orders.items():
-            if trade.orderStatus.status in ['Filled', 'Cancelled', 'Inactive']:
+            if trade and hasattr(trade, 'orderStatus') and trade.orderStatus and trade.orderStatus.status in ['Filled', 'Cancelled', 'Inactive']:
                 to_remove.append(order_id)
                 
         for order_id in to_remove:
