@@ -484,6 +484,61 @@ class AccountManager:
         
     def cleanup(self):
         return self._service.cleanup()
+    
+    # API Compatibility additions for AccountService
+    @property
+    def positions(self) -> Dict[str, Any]:
+        """
+        Get positions as a dictionary for compatibility with AccountService
+        Maps position contract symbols to position objects
+        """
+        self._sync_attributes()  # Ensure we have latest data
+        
+        # Convert _positions dict to format expected by AccountService
+        formatted_positions = {}
+        
+        for account, account_positions in self._positions.items():
+            for position in account_positions:
+                if hasattr(position, 'contract') and hasattr(position.contract, 'symbol'):
+                    symbol = position.contract.symbol
+                    formatted_positions[symbol] = position
+        
+        return formatted_positions
+    
+    def update_positions(self, account: Optional[str] = None) -> bool:
+        """
+        Update positions for specified account or default account
+        Returns True if successful, False otherwise
+        """
+        try:
+            # Use the service's refresh method
+            import asyncio
+            
+            # Get current event loop or create new one
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, we can't use run_until_complete
+                    # Schedule the coroutine and return True optimistically
+                    loop.create_task(self._service.refresh_all_accounts())
+                    return True
+                else:
+                    # Loop exists but not running, safe to use run_until_complete
+                    loop.run_until_complete(self._service.refresh_all_accounts())
+            except RuntimeError:
+                # No event loop, create one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self._service.refresh_all_accounts())
+                loop.close()
+            
+            # Sync attributes after update
+            self._sync_attributes()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating positions: {e}")
+            return False
 
 
 # Create singleton instance for backward compatibility
