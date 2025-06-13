@@ -119,7 +119,7 @@ class ConnectionService(BaseService):
             # Initialize account manager to get account values
             try:
                 from ib_async import util
-                util.run(self.account_manager.initialize())
+                util.run(self.account_manager.initialize_async())
             except Exception as e:
                 app_logger.warning(f"Failed to initialize account manager: {e}")
             

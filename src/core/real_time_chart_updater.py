@@ -139,7 +139,7 @@ class RealTimeChartUpdater(QObject):
         except Exception as e:
             logger.error(f"Error starting price ticks: {e}")
     
-    def _on_realtime_bar(self, bars):
+    def _on_realtime_bar(self, bars, *args):
         """Handle incoming real-time bar data"""
         try:
             # Handle the callback signature - ib_async passes (subscription, bars)
