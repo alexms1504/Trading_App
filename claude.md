@@ -230,6 +230,29 @@ This application handles real money trading, so **financial safety is paramount*
 
 **Never bypass validation or safety mechanisms** - trading application bugs can result in significant financial losses.
 
+## ⚠️ CRITICAL KNOWN ISSUES (As of 2025-06-13)
+
+### IMMEDIATE ATTENTION REQUIRED
+
+1. **FINANCIAL SAFETY**: Risk calculator availability in RiskService can fail silently (src/services/risk_service.py:72-90)
+   - **Impact**: Trades could execute without proper position sizing
+   - **Priority**: CRITICAL - Fix before any live trading
+
+2. **EVENT BUS MEMORY LEAK**: Weak reference assumption is incorrect (src/services/event_bus.py:234-242)
+   - **Impact**: Memory leaks and potential runtime crashes
+   - **Priority**: HIGH - Affects application stability
+
+3. **MISSING CORE COMPONENT**: data_fetcher.py referenced but missing from codebase
+   - **Impact**: Broken imports in UnifiedDataService and throughout system
+   - **Priority**: HIGH - Core functionality affected
+
+### Verification Required
+Before any production deployment, verify:
+- [ ] Risk calculations always execute before trade submission
+- [ ] Event bus subscribers are properly managed
+- [ ] All imports resolve successfully
+- [ ] Price validation includes timestamp checks
+
 ## Event-Driven Architecture Details
 
 ### EventBus Implementation
