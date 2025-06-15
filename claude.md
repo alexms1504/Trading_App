@@ -2,6 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+# Important Instuctions to follow
+**General**
+1. When you are uncertain about facts, current information, or technical details, you should use web search to verify and provide accurate information rather than speculating or admitting uncertainty without investigation. When a problem seems to involve a specific API or library, don't assume you know it. Always check the web for the documentation of the relevant features.
+2. If running bash command failed, adjust the synatx and try again. If still not fixed, you can ask for help from user.
+3. Explain your approach step-by-step before writing any code.
+
+**Design Principles**
+1. Don't overengineer: Simple beats complex
+2. No fallbacks: One correct path, no alternatives
+3. One way: One way to do things, not many
+4. Clarity over compatibility: Clear code beats backward compatibility
+5. Throw errors: Fail fast when preconditions aren't met
+6. No backups: Trust the primary mechanism
+7. Separation of concepts: Each function should have a single responsibility
+
+**Development Methodology**
+
+1. Surgical changes only: Make minimal, focused fixes
+2. Evidence-based debugging: Add minimal, targeted logging
+3. Fix root causes: Address the underlying issue, not just symptoms
+4. Simple > Complex: Let TypeScript catch errors instead of excessive runtime checks
+5. Collaborative process: Work with user to identify most efficient solution
+
+
+
+
+
 ## Development Environment
 
 **Python Environment**: Use the Anaconda environment `ib_trade` 
@@ -13,11 +40,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run the application
 /mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe main.py
 
+# Run all tests (after installing pytest)
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe run_tests.py
+
+# Run specific test suites
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe run_tests.py --unit          # Unit tests only
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe run_tests.py --integration   # Integration tests only  
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe run_tests.py --performance   # Performance benchmarks
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe run_tests.py --coverage      # With coverage report
 ```
 
 ## Architecture Overview
 
-This is a sophisticated **event-driven, service-oriented architecture** for low-latency trading with Interactive Brokers:
+This is a sophisticated **event-driven, service-oriented architecture** for low-latency trading with Interactive Brokers.
+
+**Current State**: The architecture is acknowledged as over-engineered for a single-user application. A hybrid optimization approach has been chosen - targeted simplification while adding new multi-symbol monitoring capabilities.
 
 ### Actual Implementation Architecture
 ```
@@ -115,7 +152,11 @@ Comprehensive configuration management in `config.py` with 566 lines of settings
 - **Service-based architecture** - new features should use the service layer
 
 ### Testing Requirements
-- TBC
+- **Unit tests** for all service classes in `tests/unit/services/`
+- **Integration tests** for end-to-end workflows in `tests/integration/`
+- **Performance benchmarks** with specific targets in `tests/performance/`
+- All tests must pass before changes are considered complete
+- **Note**: pytest needs to be installed in the ib_trade environment
 
 ### Working with Legacy Code
 - **Migration Status**: `src/core/` contains original implementations being wrapped/migrated
@@ -173,13 +214,21 @@ Example: data_fetcher.py → data_service.py → unified_data_service.py
 
 ## Development Workflow
 
+### Current Development: Multi-Symbol Monitoring System
+
+For the next 8 weeks, development focuses on adding real-time monitoring for 50+ symbols. See:
+- **[MULTI_SYMBOL_MONITORING_PLAN.md](MULTI_SYMBOL_MONITORING_PLAN.md)** - Technical specification
+- **[IMPLEMENTATION_TRACKER.md](IMPLEMENTATION_TRACKER.md)** - Progress tracking
+
+### General Development Guidelines
+
 1. **Architecture First**: Review `service_registry.py` and `event_bus.py` to understand service patterns
-2. **Event-Driven Development**: Use EventBus for service communication, avoid direct coupling
-3. **Service-Oriented**: New features should be services registered in `ServiceRegistry`
-4. **Legacy Wrapping**: When modifying core modules, create service wrappers instead
-5. **Qt Integration**: Use Qt signals for UI responsiveness, subscribe to EventBus events in controllers
-6. **Testing Strategy**: Test services independently, use event mocking for integration tests
-7. **Performance Monitoring**: Validate against benchmarks, monitor EventBus event counts
+2. **Planned Simplification**: Remove Feature layer, consolidate services, simplify DI container
+3. **Service-Oriented**: Use existing services where possible (OrderService, RiskService)
+4. **Provider Abstraction**: Easy switching between data providers (IB, Databento, etc.)
+5. **Qt Integration**: Use Qt signals for UI responsiveness, prepare for chart library migration
+6. **Testing Strategy**: Test services independently, use TA libraries for pattern detection
+7. **Performance Monitoring**: Target <500ms for 50+ symbols, continuous profiling
 
 ### Service Development Pattern
 ```python
@@ -212,9 +261,30 @@ This application handles real money trading, so **financial safety is paramount*
 - All position sizes validated against account limits
 - Multiple confirmation layers for order execution
 - Comprehensive logging for audit trails
-- Circuit breakers for daily loss limits (in development)
+- Circuit breakers for daily loss limits (planned - see IMPLEMENTATION_TRACKER.md)
 
 **Never bypass validation or safety mechanisms** - trading application bugs can result in significant financial losses.
+
+## Upcoming Architecture Changes
+
+### Planned Simplifications (Phase 1 of Multi-Symbol Monitoring)
+1. **Remove Feature Layer**: Merge features into services to reduce abstraction
+2. **Consolidate Data Services**: Single StreamingService instead of multiple
+3. **Simplify DI**: Replace ServiceRegistry with simple factory pattern
+4. **Unify Logging**: Merge 3 logger implementations into one
+
+### New Components (Phases 2-6)
+1. **StreamingService**: Unified data streaming with provider abstraction
+2. **PatternDetector**: Wrapper around TA libraries for pattern detection
+3. **AlertManager**: Priority-based alerts with no-overwrite guarantee
+4. **OrderStagingManager**: Pre-configured orders for Order Assistant
+5. **MultiSymbolDashboard**: Monitor 50+ symbols with criteria checklist
+
+### Integration Philosophy
+- Preserve all existing functionality
+- Supplement active trading, don't replace it
+- User maintains full control over all trades
+- Pre-fill convenience without automation
 
 ## ⚠️ CRITICAL KNOWN ISSUES (As of 2025-06-15)
 
@@ -223,14 +293,17 @@ This application handles real money trading, so **financial safety is paramount*
 1. **FINANCIAL SAFETY**: Risk calculator availability in RiskService can fail silently (src/services/risk_service.py:72-90)
    - **Impact**: Trades could execute without proper position sizing
    - **Priority**: CRITICAL - Fix before any live trading
+   - **Solution**: Make risk calculator fail explicitly, add mandatory validation before order submission
 
-2. ~~**EVENT BUS MEMORY LEAK**: Weak reference assumption is incorrect~~ **RESOLVED**
-   - ~~**Impact**: Memory leaks and potential runtime crashes~~
-   - **Resolution**: EventBus now correctly handles regular references, not weak references
+2. **TESTING INFRASTRUCTURE**: pytest not installed in ib_trade environment
+   - **Impact**: Cannot run test suite to validate changes
+   - **Priority**: HIGH - Required for development
+   - **Solution**: `pip install pytest pytest-cov` in ib_trade environment
 
-3. ~~**MISSING CORE COMPONENT**: data_fetcher.py referenced but missing from codebase~~ **NOT AN ISSUE**
-   - **Clarification**: This is expected - functionality has been migrated into UnifiedDataService
-   - **Status**: References to data_fetcher.py are only in comments documenting the migration
+3. **LOGGER DUPLICATION**: Three separate logger implementations
+   - **Impact**: Confusion about which logger to use, maintenance overhead
+   - **Priority**: MEDIUM - Code quality issue
+   - **Solution**: Consolidate into single logger with optional Qt integration
 
 ### Verification Required
 Before any production deployment, verify:

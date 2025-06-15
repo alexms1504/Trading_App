@@ -487,11 +487,18 @@ python test_price_extraction_demo.py
 
 ## 🎯 Next Development Priorities
 
-1. **Trailing Stop Orders** - Dynamic stop adjustment
-2. **Advanced Charting** - Drawing tools, patterns
+### In Active Development (8-week timeline)
+1. **Multi-Symbol Monitoring** - Track 50+ symbols with pattern detection
+2. **Real-time Alerts** - Late-stage setup detection for stop-limit entries
+3. **Enhanced Screener** - Price integration for complete data
+4. **Faster Charts** - Migration to PyQtGraph/lightweight-charts
+
+### Future Enhancements
+1. **Advanced Patterns** - VCP, Cup & Handle, Low Cheat detection
+2. **Trailing Stop Orders** - Dynamic stop adjustment  
 3. **Trade Journal** - Automated P&L tracking
-4. **Performance Optimization** - Sub-100ms execution
-5. **Portfolio Analytics** - Risk dashboard
+4. **Strategy Automation** - Rule-based trading framework
+5. **Portfolio Analytics** - Comprehensive risk dashboard
 
 ## 🚀 Current Development Status
 
