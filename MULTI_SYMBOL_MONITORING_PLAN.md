@@ -4,9 +4,12 @@
 
 This document outlines the implementation plan for adding real-time monitoring capabilities for 50+ stocks with pattern detection, alert generation, and pre-staged order execution to the existing trading application.
 
-**Target Completion**: 6-8 weeks  
+**CRITICAL UPDATE**: Added Phase 0 for safety fixes and architecture simplification before feature development.
+
+**Target Completion**: 8-10 weeks (revised to include Phase 0)  
 **Performance Target**: <500ms end-to-end latency (network latency budget: 300ms)  
 **Scale Target**: 50-100 concurrent symbols  
+**Architecture Target**: Reduce from 6 layers to 3 layers before adding features  
 
 ## System Requirements
 
@@ -376,28 +379,66 @@ Order Assistant ← Staged Orders ← Alert System
 
 ## Implementation Phases
 
-### Phase 1: Foundation & Architecture Simplification (Week 1-2)
+### Phase 0: Critical Safety Fixes & Architecture Simplification (Week 1-2)
 
-**Goal**: Streamline current architecture and prepare for multi-symbol monitoring
+**Goal**: Fix critical safety issues and aggressively simplify architecture before adding new features
 
 **Tasks**:
-1. **Architecture Cleanup** (3 days)
-   - [ ] Remove Feature layer, merge into Services
-   - [ ] Consolidate data services into single StreamingService
-   - [ ] Replace ServiceRegistry with simple factory pattern
-   - [ ] Merge 3 logger implementations into one
+1. **Critical Safety Fixes** (2 days)
+   - [ ] Fix risk calculator silent failure - make it fail explicitly
+   - [ ] Add mandatory position size validation before order submission
+   - [ ] Implement circuit breaker for 0-share orders
+   - [ ] Add health check indicators for critical services
+   - [ ] Test risk calculation failure scenarios
 
-2. **Data Provider Abstraction** (3 days)
+2. **Architecture Simplification** (6 days)
+   - [ ] Merge 14 services into 5 core services:
+     - `connection_service.py` - IB connection management
+     - `market_data_service.py` - Merge unified_data, chart_data, price_cache services
+     - `trading_service.py` - Merge order_service + risk_service
+     - `account_service.py` - Single service (remove wrapper)
+     - `streaming_service.py` - New for multi-symbol (Phase 1)
+   - [ ] Eliminate Feature layer entirely (15 files)
+     - Move useful code directly into services
+     - Delete redundant abstractions
+   - [ ] Replace EventBus with Qt signals
+   - [ ] Replace ServiceRegistry with simple factory pattern
+   - [ ] Consolidate 3 loggers into 1
+
+3. **Strangler Fig Migration** (2 days)
+   - [ ] Create new simplified services alongside old ones
+   - [ ] Update UI controllers to use new services
+   - [ ] Test thoroughly before removing old services
+   - [ ] Document migration for each component
+
+**Deliverables**:
+- Risk calculator that fails safely
+- 3-layer architecture (UI → Services → IB API)
+- 60-70% code reduction in service layer
+- All tests passing with new architecture
+
+### Phase 1: Foundation & Data Provider Abstraction (Week 3-4)
+
+**Goal**: Build clean foundation on simplified architecture
+
+**Tasks**:
+1. **Data Provider Abstraction** (3 days)
    - [ ] Create DataProvider abstract base class
    - [ ] Implement IBDataProvider with current IB connection
    - [ ] Create DataProviderFactory for provider selection
    - [ ] Add provider configuration to config.py
 
-3. **Service Consolidation** (2 days)
-   - [ ] Create new StreamingService combining data services
-   - [ ] Update existing code to use new service
-   - [ ] Remove deprecated data services
-   - [ ] Update tests
+2. **Streaming Service Implementation** (3 days)
+   - [ ] Create new StreamingService on simplified architecture
+   - [ ] Implement efficient data distribution
+   - [ ] Add caching layer for multi-symbol support
+   - [ ] Create subscription management
+
+3. **Risk Controls for Multi-Symbol** (2 days)
+   - [ ] Add symbol-level position limits
+   - [ ] Implement portfolio concentration controls
+   - [ ] Add daily loss limits per symbol
+   - [ ] Create risk dashboard for monitoring
 
 4. **Performance Baseline** (2 days)
    - [ ] Create performance benchmarks for current system
@@ -410,7 +451,7 @@ Order Assistant ← Staged Orders ← Alert System
 - Working data provider abstraction
 - Performance baseline report
 
-### Phase 2: Pattern Detection Framework (Week 3)
+### Phase 2: Pattern Detection Framework (Week 5)
 
 **Goal**: Build extensible pattern detection system
 
@@ -444,7 +485,7 @@ Order Assistant ← Staged Orders ← Alert System
 - 2 initial pattern implementations
 - Pattern testing suite
 
-### Phase 3: Multi-Symbol Monitoring (Week 4-5)
+### Phase 3: Multi-Symbol Monitoring (Week 6-7)
 
 **Goal**: Implement concurrent monitoring for 50+ symbols
 
@@ -478,7 +519,7 @@ Order Assistant ← Staged Orders ← Alert System
 - Monitoring dashboard UI
 - Performance meeting <500ms target
 
-### Phase 4: Alert System (Week 6)
+### Phase 4: Alert System (Week 8)
 
 **Goal**: Build comprehensive alert management system
 
@@ -512,7 +553,7 @@ Order Assistant ← Staged Orders ← Alert System
 - Alert UI with history
 - No overwrite guarantee
 
-### Phase 5: Order Staging & Execution (Week 7)
+### Phase 5: Order Staging & Execution (Week 9)
 
 **Goal**: Implement pre-staged order system with one-click execution
 
@@ -546,7 +587,7 @@ Order Assistant ← Staged Orders ← Alert System
 - One-click execution with confirmation
 - Risk validation integration
 
-### Phase 6: Integration & Testing (Week 8)
+### Phase 6: Integration & Testing (Week 10)
 
 **Goal**: Complete system integration and comprehensive testing
 
@@ -680,7 +721,58 @@ Order Assistant ← Staged Orders ← Alert System
    - Alerts with pre-filled order details
    - User makes final decision on execution
 
+## Architecture Simplification Details
+
+### Current vs Target Architecture
+
+**Current (6 layers, 60+ files)**:
+```
+UI (2,666 lines) → Controller → Feature → Service → Core → IB API
+- 14 services with complex dependencies
+- 15 feature files duplicating service logic
+- Complex EventBus with threading
+- Over-engineered ServiceRegistry
+```
+
+**Target (3 layers, ~25 files)**:
+```
+UI → Services (5 total) → IB API
+- Direct Qt signal communication
+- Simple service factory
+- Clear single responsibility
+- 60-70% code reduction
+```
+
+### Service Consolidation Plan
+
+1. **market_data_service.py** (new)
+   - Merge: unified_data_service + chart_data_service + price_cache_service
+   - Single source of truth for all market data
+   - Efficient caching for multi-symbol support
+
+2. **trading_service.py** (new)
+   - Merge: order_service + risk_service
+   - Integrated risk validation on every order
+   - No possibility of bypassing risk checks
+
+3. **account_service.py** (simplified)
+   - Remove AccountService wrapper
+   - Direct implementation only
+   - Clear account state management
+
 ## Risk Mitigation Strategies
+
+### Financial Safety Risks
+
+1. **Risk Calculator Failures**
+   - Mitigation: Explicit exceptions, no silent failures
+   - Monitoring: Service health dashboard
+   - Fallback: Block all trading if risk service unavailable
+
+2. **Multi-Symbol Position Limits**
+   - Mitigation: Hard limits per symbol
+   - Monitoring: Real-time exposure tracking
+   - Fallback: Automatic position reduction alerts
 
 ### Technical Risks
 
@@ -844,6 +936,7 @@ This implementation plan provides a structured approach to adding multi-symbol m
 
 | Phase | Status | Progress | Start Date | End Date | Duration |
 |-------|--------|----------|------------|----------|----------|
+| Phase 0: Safety & Simplification | Not Started | 0% | TBD | TBD | 2 weeks |
 | Phase 1: Foundation | Not Started | 0% | TBD | TBD | 2 weeks |
 | Phase 2: Pattern Framework | Not Started | 0% | TBD | TBD | 1 week |
 | Phase 3: Multi-Symbol | Not Started | 0% | TBD | TBD | 2 weeks |
@@ -862,14 +955,23 @@ This implementation plan provides a structured approach to adding multi-symbol m
 
 ### Critical Path Items
 
-1. Fix risk calculator silent failure (prerequisite)
-2. Install pytest and validate test suite (prerequisite)
-3. Architecture simplification (Phase 1)
-4. TA library integration (Phase 2)
-5. Screener price integration (Phase 3)
-6. Order Assistant pre-fill integration (Phase 5)
+1. **Fix risk calculator silent failure** (Phase 0 - CRITICAL)
+2. **Simplify architecture to 3 layers** (Phase 0 - CRITICAL)
+3. Install pytest and validate test suite (prerequisite)
+4. Implement streaming service on clean architecture (Phase 1)
+5. TA library integration (Phase 2)
+6. Multi-symbol performance validation (Phase 3)
+7. Risk controls for concurrent positions (Phase 3)
+8. Order Assistant pre-fill integration (Phase 5)
 
-**Document Version**: 1.2  
+**Document Version**: 2.0  
 **Created**: 2025-06-15  
 **Last Updated**: 2025-06-15  
 **Author**: Senior Principal Software Engineer
+
+**Major Changes in v2.0**:
+- Added Phase 0 for critical safety fixes
+- Included aggressive architecture simplification
+- Adjusted timeline to 8-10 weeks
+- Added financial safety as top priority
+- Incorporated strangler fig migration pattern

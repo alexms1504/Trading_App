@@ -4,15 +4,17 @@
 
 **Project**: Multi-Symbol Monitoring & Alert System  
 **Status**: 🔴 Not Started  
-**Current Phase**: Planning Complete  
-**Next Action**: Begin Phase 1 - Architecture Cleanup  
-**Blockers**: 2 (Risk calculator fix, pytest installation)
+**Current Phase**: Planning Complete (v2.0)  
+**Next Action**: Begin Phase 0 - Critical Safety Fixes  
+**Blockers**: 3 (Risk calculator fix, Architecture complexity, pytest installation)  
+**Timeline**: 8-10 weeks (revised from 6-8 weeks)
 
 ## Phase Progress Summary
 
 | # | Phase | Status | Progress | Duration | Blockers |
 |---|-------|--------|----------|----------|----------|
-| 0 | Prerequisites | 🔴 Not Started | 0% | 2 days | 2 |
+| - | Prerequisites | 🔴 Not Started | 0% | 2 days | 3 |
+| 0 | Safety & Simplification | 🔴 Not Started | 0% | 2 weeks | 0 |
 | 1 | Foundation & Cleanup | 🔴 Not Started | 0% | 2 weeks | 0 |
 | 2 | Pattern Framework | 🔴 Not Started | 0% | 1 week | 0 |
 | 3 | Multi-Symbol Monitoring | 🔴 Not Started | 0% | 2 weeks | 0 |
@@ -24,42 +26,84 @@
 
 | Task | Status | Priority | Owner | Notes |
 |------|--------|----------|-------|-------|
-| Fix risk calculator silent failure | 🔴 Not Started | CRITICAL | - | Can fail without position sizing |
+| Fix risk calculator silent failure | 🔴 Not Started | CRITICAL | - | **FINANCIAL SAFETY RISK** - Can place orders with 0 shares |
+| Simplify architecture to 3 layers | 🔴 Not Started | CRITICAL | - | 6 layers → 3 layers before adding features |
 | Install pytest in ib_trade environment | 🔴 Not Started | HIGH | - | Required for all testing |
 | Validate existing test suite | 🔴 Not Started | HIGH | - | Ensure baseline quality |
 | Document current performance metrics | 🔴 Not Started | MEDIUM | - | Establish baseline |
 
-## Phase 1: Foundation & Architecture Cleanup (Weeks 1-2)
+## Phase 0: Critical Safety Fixes & Architecture Simplification (Weeks 1-2)
 
 ### Week 1 Tasks
 
-#### Architecture Simplification
-- [ ] **1.1** Remove Feature layer, merge into Services
-- [ ] **1.2** Consolidate multiple data services into single StreamingService  
-- [ ] **1.3** Create simple service factory (not full DI container)
-- [ ] **1.4** Merge 3 logger implementations into one
+#### Critical Safety Fixes (MUST DO FIRST)
+- [ ] **0.1** Fix RiskService._ensure_risk_calculator() to raise exception instead of returning empty result
+- [ ] **0.2** Add mandatory position size validation in TradingController.submit_order()
+- [ ] **0.3** Block orders with 0 shares at UI level
+- [ ] **0.4** Add service health indicators to UI
+- [ ] **0.5** Create tests for risk calculator failure scenarios
+- [ ] **0.6** Add circuit breaker for daily loss limits
 
-#### Data Provider Abstraction
-- [ ] **1.5** Create DataProvider interface with easy switching
-- [ ] **1.6** Implement IBDataProvider wrapper
-- [ ] **1.7** Add provider configuration to config.py
-- [ ] **1.8** Create provider factory for 1-line switching
+#### Architecture Simplification - Services
+- [ ] **0.7** Create new simplified services structure:
+  - [ ] `market_data_service.py` (merge 4 services)
+  - [ ] `trading_service.py` (merge order + risk)
+  - [ ] `account_service.py` (remove wrapper)
+- [ ] **0.8** Implement strangler fig pattern - new services alongside old
+- [ ] **0.9** Update UI controllers to use new services
+- [ ] **0.10** Test new services thoroughly
 
 ### Week 2 Tasks
 
-#### Service Integration
-- [ ] **1.9** Update all components to use StreamingService
-- [ ] **1.10** Remove deprecated data services
-- [ ] **1.11** Update existing unit tests
-- [ ] **1.12** Create integration tests for new architecture
+#### Architecture Simplification - Infrastructure
+- [ ] **0.11** Replace EventBus with Qt signals
+- [ ] **0.12** Replace ServiceRegistry with simple factory
+- [ ] **0.13** Consolidate 3 loggers into 1
+- [ ] **0.14** Remove Feature layer (15 files)
+- [ ] **0.15** Delete old services after migration
+- [ ] **0.16** Update all tests for new architecture
 
-#### Screener Enhancement
-- [ ] **1.13** Add batch price fetching to screener results
-- [ ] **1.14** Integrate StreamingService with market screener
-- [ ] **1.15** Add "Monitor" button to screener UI
-- [ ] **1.16** Test screener → monitoring workflow
+#### Validation & Documentation
+- [ ] **0.17** Verify all safety fixes working
+- [ ] **0.18** Performance test new architecture
+- [ ] **0.19** Document migration guide
+- [ ] **0.20** Update README with new architecture
 
-## Phase 2: Pattern Detection Framework (Week 3)
+### Simplification Metrics
+
+| Metric | Current | Target | Actual |
+|--------|---------|--------|--------|
+| Service files | 14 | 5 | - |
+| Feature files | 15 | 0 | - |
+| Total LOC in services | ~8,000 | ~3,000 | - |
+| Architecture layers | 6 | 3 | - |
+| Logger implementations | 3 | 1 | - |
+
+## Phase 1: Foundation & Data Provider Abstraction (Weeks 3-4)
+
+### Week 3 Tasks
+
+#### Data Provider Abstraction
+- [ ] **1.1** Create DataProvider interface with easy switching
+- [ ] **1.2** Implement IBDataProvider wrapper
+- [ ] **1.3** Add provider configuration to config.py
+- [ ] **1.4** Create provider factory for 1-line switching
+
+### Week 4 Tasks
+
+#### Streaming Service Implementation
+- [ ] **1.5** Build StreamingService on simplified architecture
+- [ ] **1.6** Implement efficient data distribution
+- [ ] **1.7** Add subscription management
+- [ ] **1.8** Create integration tests
+
+#### Risk Controls for Multi-Symbol
+- [ ] **1.9** Add symbol-level position limits
+- [ ] **1.10** Implement portfolio concentration controls
+- [ ] **1.11** Add daily loss limits per symbol
+- [ ] **1.12** Create risk monitoring dashboard
+
+## Phase 2: Pattern Detection Framework (Week 5)
 
 ### TA Library Integration
 - [ ] **2.1** Evaluate pandas-ta vs TA-Lib for project needs
@@ -79,9 +123,9 @@
 - [ ] **2.11** Validate pattern accuracy metrics
 - [ ] **2.12** Document pattern parameters
 
-## Phase 3: Multi-Symbol Monitoring (Weeks 4-5)
+## Phase 3: Multi-Symbol Monitoring (Weeks 6-7)
 
-### Week 4: Core Monitoring
+### Week 6: Core Monitoring
 
 #### Symbol Monitor
 - [ ] **3.1** Create SymbolMonitor class with bar buffering
@@ -95,7 +139,7 @@
 - [ ] **3.7** Add symbol subscription management
 - [ ] **3.8** Create rate limiting for API calls
 
-### Week 5: UI & Performance
+### Week 7: UI & Performance
 
 #### Dashboard UI
 - [ ] **3.9** Create symbol monitoring dashboard
@@ -109,7 +153,7 @@
 - [ ] **3.15** Optimize memory usage for 50+ symbols
 - [ ] **3.16** Achieve <500ms latency target
 
-## Phase 4: Alert System (Week 6)
+## Phase 4: Alert System (Week 8)
 
 ### Alert Infrastructure
 - [ ] **4.1** Create Alert data structures with priority
@@ -129,7 +173,7 @@
 - [ ] **4.11** Implement alert throttling logic
 - [ ] **4.12** Test high-volume alert scenarios
 
-## Phase 5: Order Integration (Week 7)
+## Phase 5: Order Integration (Week 9)
 
 ### Order Staging
 - [ ] **5.1** Create staged order structures for stop-limits
@@ -149,7 +193,7 @@
 - [ ] **5.11** Add order modification capabilities
 - [ ] **5.12** Test end-to-end order flow
 
-## Phase 6: Integration & Testing (Week 8)
+## Phase 6: Integration & Testing (Week 10)
 
 ### System Integration
 - [ ] **6.1** Full end-to-end system testing
@@ -189,10 +233,12 @@
 
 | Risk | Impact | Probability | Mitigation | Status |
 |------|--------|-------------|------------|--------|
+| Risk calculator silent failure | CRITICAL | HIGH | Fix in Phase 0, explicit exceptions | 🔴 Open |
+| Architecture complexity | HIGH | CERTAIN | Simplify in Phase 0 before features | 🔴 Open |
 | IB API concurrent stream limits | HIGH | MEDIUM | Test early, prepare fallback | 🔴 Open |
 | Performance at 50+ symbols | HIGH | MEDIUM | Continuous profiling | 🔴 Open |
 | Alert overload | MEDIUM | LOW | Priority queue, filtering | 🔴 Open |
-| Integration complexity | MEDIUM | MEDIUM | Incremental integration | 🔴 Open |
+| Integration complexity | MEDIUM | LOW | Simplified architecture reduces risk | 🔴 Open |
 
 ## Metrics & Success Criteria
 
@@ -245,6 +291,15 @@ Notes:
 
 ---
 
-**Last Updated**: 2025-06-15  
-**Next Review**: Start of Phase 1  
+**Last Updated**: 2025-06-15 (v2.0)  
+**Next Review**: Start of Phase 0  
 **Owner**: Development Team
+
+## Change Log
+
+### Version 2.0 (2025-06-15)
+- Added Phase 0 for critical safety fixes
+- Included aggressive architecture simplification
+- Adjusted timeline from 6-8 weeks to 8-10 weeks
+- Made risk calculator fix top priority
+- Added simplification metrics tracking
