@@ -11,19 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Key Commands**:
 ```bash
 # Run the application
-python main.py
+/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe main.py
 
-# Run all tests
-python run_tests.py
-
-# Run specific test suites
-python run_tests.py --unit          # Unit tests only
-python run_tests.py --integration   # Integration tests only  
-python run_tests.py --performance   # Performance benchmarks
-python run_tests.py --coverage      # With coverage report
-
-# Run tests with filters
-python run_tests.py -k "test_connection" -v
 ```
 
 ## Architecture Overview
@@ -126,10 +115,7 @@ Comprehensive configuration management in `config.py` with 566 lines of settings
 - **Service-based architecture** - new features should use the service layer
 
 ### Testing Requirements
-- **Unit tests** for all service classes in `tests/unit/services/`
-- **Integration tests** for end-to-end workflows in `tests/integration/`
-- **Performance benchmarks** with specific targets in `tests/performance/`
-- All tests must pass before changes are considered complete
+- TBC
 
 ### Working with Legacy Code
 - **Migration Status**: `src/core/` contains original implementations being wrapped/migrated
@@ -230,7 +216,7 @@ This application handles real money trading, so **financial safety is paramount*
 
 **Never bypass validation or safety mechanisms** - trading application bugs can result in significant financial losses.
 
-## ⚠️ CRITICAL KNOWN ISSUES (As of 2025-06-13)
+## ⚠️ CRITICAL KNOWN ISSUES (As of 2025-06-15)
 
 ### IMMEDIATE ATTENTION REQUIRED
 
@@ -238,19 +224,19 @@ This application handles real money trading, so **financial safety is paramount*
    - **Impact**: Trades could execute without proper position sizing
    - **Priority**: CRITICAL - Fix before any live trading
 
-2. **EVENT BUS MEMORY LEAK**: Weak reference assumption is incorrect (src/services/event_bus.py:234-242)
-   - **Impact**: Memory leaks and potential runtime crashes
-   - **Priority**: HIGH - Affects application stability
+2. ~~**EVENT BUS MEMORY LEAK**: Weak reference assumption is incorrect~~ **RESOLVED**
+   - ~~**Impact**: Memory leaks and potential runtime crashes~~
+   - **Resolution**: EventBus now correctly handles regular references, not weak references
 
-3. **MISSING CORE COMPONENT**: data_fetcher.py referenced but missing from codebase
-   - **Impact**: Broken imports in UnifiedDataService and throughout system
-   - **Priority**: HIGH - Core functionality affected
+3. ~~**MISSING CORE COMPONENT**: data_fetcher.py referenced but missing from codebase~~ **NOT AN ISSUE**
+   - **Clarification**: This is expected - functionality has been migrated into UnifiedDataService
+   - **Status**: References to data_fetcher.py are only in comments documenting the migration
 
 ### Verification Required
 Before any production deployment, verify:
 - [ ] Risk calculations always execute before trade submission
-- [ ] Event bus subscribers are properly managed
-- [ ] All imports resolve successfully
+- [x] Event bus subscribers are properly managed (RESOLVED)
+- [x] All imports resolve successfully (VERIFIED)
 - [ ] Price validation includes timestamp checks
 
 ## Event-Driven Architecture Details

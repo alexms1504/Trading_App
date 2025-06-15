@@ -500,7 +500,7 @@ python test_price_extraction_demo.py
 The trading application has successfully completed architectural reconstruction:
 
 - **Clean Architecture**: Service-oriented design with feature modules
-- **Comprehensive Testing**: 69+ unit tests with performance validation
+- **Comprehensive Testing**: 69+ unit tests with performance validation (Note: pytest needs installation)
 - **Code Quality**: MainWindow reduced from 1,334 to ~300 lines (78% reduction)
 - **Performance**: All targets exceeded by 3-10x
 - **Functionality**: All original features preserved and enhanced
@@ -511,6 +511,11 @@ For detailed implementation roadmap, see: **[TRADING_APP_MASTER_PLAN.md](TRADING
 
 #### Current Priority: Phase 3 - Production Hardening
 **Timeline**: 2-3 weeks | **Focus**: Financial safety before feature expansion
+
+**Architectural Decision Required**: 
+- Conservative approach: Safe cleanup and consolidation (10-12% reduction)
+- Aggressive approach: Complete transformation for 10x performance (40-50% reduction)
+See OPTIMIZATION_ROADMAP.md and TRADING_APP_OPTIMIZATION_PLAN.md for details.
 
 **Critical Safety Features**:
 - Position size limits and concentration controls
@@ -543,6 +548,8 @@ For detailed implementation roadmap, see: **[TRADING_APP_MASTER_PLAN.md](TRADING
 ### 🔒 Safety First Approach
 
 > ⚠️ **CRITICAL**: All new development prioritizes financial safety. No feature additions until production hardening is complete and validated in live trading.
+>
+> ⚠️ **KNOWN ISSUE**: Risk calculator can fail silently without proper position sizing (see CLAUDE.md). This MUST be fixed before any live trading.
 
 This approach ensures:
 - Zero catastrophic trading losses
