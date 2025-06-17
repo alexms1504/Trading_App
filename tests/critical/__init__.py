@@ -1,0 +1,1 @@
+"""Critical financial safety tests."""
