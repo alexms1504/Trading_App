@@ -69,7 +69,16 @@ class RiskService(BaseService):
             logger.error(f"Error setting account manager in RiskService: {str(e)}")
     
     def _ensure_risk_calculator(self) -> bool:
-        """Ensure risk calculator is available, auto-initialize if possible"""
+        """
+        Check if risk calculator is available, attempt auto-initialization if not.
+        
+        This method implements a graceful degradation pattern to handle the async
+        nature of IB connection and account data loading. It returns False instead
+        of throwing exceptions to allow the UI to remain responsive during startup.
+        
+        Returns:
+            bool: True if risk calculator is available, False otherwise
+        """
         if self.risk_calculator:
             return True
             
@@ -82,7 +91,7 @@ class RiskService(BaseService):
                 logger.info("Risk calculator auto-initialized from account service")
                 return True
             else:
-                logger.warning("Risk calculator not available - account service not ready")
+                logger.warning("Risk calculator not available - account service not ready. Please ensure IB connection is active.")
                 return False
         except Exception as e:
             logger.error(f"Risk calculator auto-init failed: {e}")
@@ -145,10 +154,10 @@ class RiskService(BaseService):
             Tuple of (is_valid, list_of_messages)
         """
         if not self._check_initialized():
-            return False, ["Risk service not initialized"]
+            return False, ["Risk service not initialized - please restart the application"]
             
         if not self._ensure_risk_calculator():
-            return False, ["Risk calculator not available"]
+            return False, ["Risk calculator not ready - please connect to IB and wait for account data to load"]
             
         try:
             return self.risk_calculator.validate_trade(
@@ -225,7 +234,15 @@ class RiskService(BaseService):
             return []
             
     def _empty_result(self) -> Dict[str, float]:
-        """Return empty result dictionary"""
+        """Return empty result dictionary with helpful user guidance"""
+        # Determine the specific reason for unavailability
+        if not self._initialized:
+            message = 'Risk service not initialized - please restart the application'
+        elif not self.risk_calculator:
+            message = 'Risk calculator not ready - please connect to IB and wait for account data to load'
+        else:
+            message = 'Risk calculation temporarily unavailable - checking connection status'
+            
         return {
             'shares': 0,
             'dollar_risk': 0,
@@ -235,7 +252,7 @@ class RiskService(BaseService):
             'percent_of_buying_power': 0,
             'net_liquidation': 0,
             'buying_power': 0,
-            'messages': ['Risk calculation not available']
+            'messages': [message]
         }
         
     def get_default_risk_percent(self) -> float:
@@ -245,3 +262,16 @@ class RiskService(BaseService):
     def get_max_risk_percent(self) -> float:
         """Get maximum risk percentage from config"""
         return TRADING_CONFIG.get('max_risk_percent', 2.0)
+        
+    def is_ready(self) -> bool:
+        """Check if risk calculator is available and ready for use"""
+        return self._initialized and self.risk_calculator is not None
+        
+    def get_status_message(self) -> str:
+        """Get human-readable status message about risk calculator availability"""
+        if not self._initialized:
+            return "Risk service not initialized"
+        elif not self.risk_calculator:
+            return "Waiting for IB connection and account data"
+        else:
+            return "Risk calculator ready"

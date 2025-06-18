@@ -1,1 +1,0 @@
-"""Trading application test suite."""
