@@ -13,11 +13,7 @@ from src.core.risk_calculator import RiskCalculator
 from src.core.order_manager import OrderManager
 from config import IB_CONFIG, TIMER_CONFIG, UI_MESSAGES, DEFAULT_ACCOUNT_VALUES
 
-# Try to import app_logger, fall back to simple logger for testing
-try:
-    from src.utils.app_logger import app_logger
-except ImportError:
-    from src.utils.simple_logger import simple_logger as app_logger
+from src.utils.logger import logger
 
 
 class ConnectionMode(Enum):
@@ -91,7 +87,7 @@ class ConnectionService(BaseService):
             True if connection successful
         """
         try:
-            app_logger.info(f"Connecting to IB in {mode.value} mode")
+            logger.info(f"Connecting to IB in {mode.value} mode")
             self.current_mode = mode
             
             # Use the global IB connection manager singleton
@@ -109,7 +105,7 @@ class ConnectionService(BaseService):
             success = util.run(connect_async())
                 
             if not success:
-                app_logger.error("Failed to connect to IB")
+                logger.error("Failed to connect to IB")
                 self._notify_connection(False, "Connection failed")
                 return False
                 
@@ -121,11 +117,11 @@ class ConnectionService(BaseService):
                 from ib_async import util
                 util.run(self.account_manager.initialize_async())
             except Exception as e:
-                app_logger.warning(f"Failed to initialize account manager: {e}")
+                logger.warning(f"Failed to initialize account manager: {e}")
             
             # Get accounts
             self.available_accounts = self.ib_manager.get_accounts()
-            app_logger.info(f"Found {len(self.available_accounts)} accounts")
+            logger.info(f"Found {len(self.available_accounts)} accounts")
             
             # Subscribe to events
             self._subscribe_to_events()
@@ -150,7 +146,7 @@ class ConnectionService(BaseService):
             True if disconnection successful
         """
         try:
-            app_logger.info("Disconnecting from IB")
+            logger.info("Disconnecting from IB")
             
             if self.ib_manager:
                 # Run async disconnect
@@ -183,11 +179,11 @@ class ConnectionService(BaseService):
             True if switch successful
         """
         if self.current_mode == new_mode:
-            app_logger.info(f"Already in {new_mode.value} mode")
+            logger.info(f"Already in {new_mode.value} mode")
             return True
             
         if self.is_connected:
-            app_logger.info(f"Switching from {self.current_mode.value} to {new_mode.value}")
+            logger.info(f"Switching from {self.current_mode.value} to {new_mode.value}")
             self.disconnect()
             
         return self.connect(new_mode)
@@ -243,7 +239,7 @@ class ConnectionService(BaseService):
             True if account selected successfully
         """
         if account not in self.available_accounts:
-            app_logger.error(f"Account {account} not available")
+            logger.error(f"Account {account} not available")
             return False
             
         try:
@@ -253,7 +249,7 @@ class ConnectionService(BaseService):
                 self.ib_manager.set_active_account(account)
                 
             self._notify_account_selected(account)
-            app_logger.info(f"Selected account: {account}")
+            logger.info(f"Selected account: {account}")
             return True
             
         except Exception as e:
@@ -303,7 +299,7 @@ class ConnectionService(BaseService):
         self.risk_calculator = RiskCalculator(self.account_manager)
         self.order_manager = OrderManager()
         
-        app_logger.info("Initialized account, risk, and order managers")
+        logger.info("Initialized account, risk, and order managers")
         
     def _cleanup_managers(self):
         """Cleanup supporting managers"""
@@ -321,13 +317,13 @@ class ConnectionService(BaseService):
             
     def _on_connection_lost(self):
         """Handle connection lost event"""
-        app_logger.warning("IB connection lost")
+        logger.warning("IB connection lost")
         self.is_connected = False
         self._notify_connection(False, "Connection lost")
         
     def _on_connection_restored(self):
         """Handle connection restored event"""
-        app_logger.info("IB connection restored")
+        logger.info("IB connection restored")
         self.is_connected = True
         mode_text = "LIVE" if self.current_mode == ConnectionMode.LIVE else "PAPER"
         self._notify_connection(True, f"Connection restored ({mode_text})")
@@ -338,7 +334,7 @@ class ConnectionService(BaseService):
             try:
                 callback(connected, message)
             except Exception as e:
-                app_logger.error(f"Error in connection callback: {e}")
+                logger.error(f"Error in connection callback: {e}")
                 
     def _notify_account_selected(self, account: str):
         """Notify account callbacks"""
@@ -346,7 +342,7 @@ class ConnectionService(BaseService):
             try:
                 callback(account)
             except Exception as e:
-                app_logger.error(f"Error in account callback: {e}")
+                logger.error(f"Error in account callback: {e}")
                 
     def get_status(self) -> Dict[str, Any]:
         """Get service status"""
@@ -388,7 +384,7 @@ class ConnectionService(BaseService):
             )
             
             if not selected_mode:
-                app_logger.info("User cancelled connection dialog")
+                logger.info("User cancelled connection dialog")
                 return False
                 
             # Connect with selected mode
@@ -403,7 +399,7 @@ class ConnectionService(BaseService):
         accounts = self.get_accounts()
         
         if not accounts:
-            app_logger.error("No accounts found after connection")
+            logger.error("No accounts found after connection")
             return False
             
         if len(accounts) == 1:
@@ -479,7 +475,7 @@ class ConnectionService(BaseService):
             try:
                 callback(net_liq, buying_power)
             except Exception as e:
-                app_logger.error(f"Error in account info callback: {e}")
+                logger.error(f"Error in account info callback: {e}")
                 
     def get_buying_power(self, account: Optional[str] = None) -> Optional[float]:
         """Get buying power for account"""

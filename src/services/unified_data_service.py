@@ -17,7 +17,6 @@ from src.services.base_service import BaseService
 from src.services.event_bus import EventType, publish_event
 from src.services.ib_connection_service import ib_connection_manager
 from src.core.market_screener import market_screener, ScreeningCriteria
-from src.services.price_cache_service import screener_price_cache
 from src.utils.logger import logger
 
 
