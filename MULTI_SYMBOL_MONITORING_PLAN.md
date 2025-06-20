@@ -379,43 +379,38 @@ Order Assistant ← Staged Orders ← Alert System
 
 ## Implementation Phases
 
-### Phase 0: Critical Safety Fixes & Architecture Simplification (Week 1-2)
+### Phase 0: Architecture Simplification (Week 1-3) - REVISED
 
-**Goal**: Fix critical safety issues and aggressively simplify architecture before adding new features
+**Goal**: Remove unnecessary complexity while maintaining all functionality
 
 **Tasks**:
-1. **Critical Safety Fixes** (2 days)
-   - [ ] Fix risk calculator silent failure - make it fail explicitly
-   - [ ] Add mandatory position size validation before order submission
-   - [ ] Implement circuit breaker for 0-share orders
-   - [ ] Add health check indicators for critical services
-   - [ ] Test risk calculation failure scenarios
+1. **EventBus Removal & Direct Connections** (Week 1)
+   - [ ] Update UnifiedDataService to use existing Qt signals
+   - [ ] Update MarketDataController to connect directly to service signals
+   - [ ] Remove EventBus completely (283 lines)
+   - [ ] Simplify service dependencies - no circular imports
+   - [ ] Measure performance improvement with actual metrics
 
-2. **Architecture Simplification** (6 days)
-   - [ ] Merge 14 services into 5 core services:
-     - `connection_service.py` - IB connection management
-     - `market_data_service.py` - Merge unified_data, chart_data, price_cache services
-     - `trading_service.py` - Merge order_service + risk_service
-     - `account_service.py` - Single service (remove wrapper)
-     - `streaming_service.py` - New for multi-symbol (Phase 1)
-   - [ ] Eliminate Feature layer entirely (15 files)
-     - Move useful code directly into services
-     - Delete redundant abstractions
-   - [ ] Replace EventBus with Qt signals
-   - [ ] Replace ServiceRegistry with simple factory pattern
-   - [ ] Consolidate 3 loggers into 1
+2. **Service-Owned Signals & Cleanup** (Week 2)
+   - [ ] Add connection_changed signal to ConnectionService
+   - [ ] Add order lifecycle signals to OrderService
+   - [ ] Add account update signals to AccountService
+   - [ ] Replace ServiceRegistry with simple ServiceManager (233 lines)
+   - [ ] Remove complex lifecycle management
 
-3. **Strangler Fig Migration** (2 days)
-   - [ ] Create new simplified services alongside old ones
-   - [ ] Update UI controllers to use new services
-   - [ ] Test thoroughly before removing old services
-   - [ ] Document migration for each component
+3. **Multi-Symbol Foundation** (Week 3)
+   - [ ] Create MultiSymbolStreaming service with direct IB API
+   - [ ] Implement efficient subscription management
+   - [ ] Add batch update support for UI efficiency
+   - [ ] Test with 20+ symbols and establish baseline
+   - [ ] Create basic multi-symbol grid UI
 
 **Deliverables**:
-- Risk calculator that fails safely
-- 3-layer architecture (UI → Services → IB API)
-- 60-70% code reduction in service layer
-- All tests passing with new architecture
+- No EventBus or ServiceRegistry complexity
+- Services with direct Qt signal connections
+- 40% code reduction in infrastructure
+- Performance baseline for multi-symbol monitoring
+- Clean architecture ready for feature development
 
 ### Phase 1: Foundation & Data Provider Abstraction (Week 3-4)
 
@@ -936,7 +931,7 @@ This implementation plan provides a structured approach to adding multi-symbol m
 
 | Phase | Status | Progress | Start Date | End Date | Duration |
 |-------|--------|----------|------------|----------|----------|
-| Phase 0: Safety & Simplification | Not Started | 0% | TBD | TBD | 2 weeks |
+| Phase 0: Architecture Simplification | In Progress | 25% | Jan 18, 2025 | TBD | 3 weeks |
 | Phase 1: Foundation | Not Started | 0% | TBD | TBD | 2 weeks |
 | Phase 2: Pattern Framework | Not Started | 0% | TBD | TBD | 1 week |
 | Phase 3: Multi-Symbol | Not Started | 0% | TBD | TBD | 2 weeks |
@@ -953,21 +948,27 @@ This implementation plan provides a structured approach to adding multi-symbol m
 5. **Focus**: Late-stage setup detection for stop-limit orders
 6. **Workflow**: Supplementary monitoring, not replacing active trading
 
-### Critical Path Items
+### Critical Path Items (REVISED)
 
-1. **Fix risk calculator silent failure** (Phase 0 - CRITICAL)
-2. **Simplify architecture to 3 layers** (Phase 0 - CRITICAL)
-3. Install pytest and validate test suite (prerequisite)
-4. Implement streaming service on clean architecture (Phase 1)
-5. TA library integration (Phase 2)
-6. Multi-symbol performance validation (Phase 3)
-7. Risk controls for concurrent positions (Phase 3)
-8. Order Assistant pre-fill integration (Phase 5)
+1. **Remove EventBus complexity** (Phase 0 - Week 1)
+2. **Implement service-owned signals** (Phase 0 - Week 2)
+3. **Create MultiSymbolStreaming foundation** (Phase 0 - Week 3)
+4. **Remove ServiceRegistry** (Phase 0 - Week 2)
+5. **Performance baseline with 20+ symbols** (Phase 0 - Week 3)
+6. **TA library integration** (Phase 2)
+7. **Multi-symbol grid UI** (Phase 3)
+8. **Order Assistant pre-fill integration** (Phase 5)
 
-**Document Version**: 2.0  
+**Document Version**: 3.0  
 **Created**: 2025-06-15  
-**Last Updated**: 2025-06-15  
+**Last Updated**: 2025-06-19  
 **Author**: Senior Principal Software Engineer
+
+**Major Changes in v3.0**:
+- Revised Phase 0 to focus on EventBus removal
+- Replaced complex abstractions with direct Qt signals
+- Added performance measurement requirements
+- Simplified architecture without adding new complexity
 
 **Major Changes in v2.0**:
 - Added Phase 0 for critical safety fixes

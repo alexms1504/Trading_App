@@ -1,247 +1,275 @@
-# Phase 0: Critical Safety & Architecture Simplification - Detailed Tasks
+# Phase 0: Architecture Simplification - Detailed Tasks (REVISED)
 
 ## Overview
-Phase 0 focuses on fixing critical safety issues and beginning architecture simplification before any new feature development. This phase is essential to ensure financial safety and create a stable foundation for the multi-symbol monitoring system.
+Phase 0 focuses on removing unnecessary complexity from the architecture while maintaining all existing functionality. The primary goals are removing EventBus, simplifying service dependencies, and preparing for efficient multi-symbol monitoring.
 
-## Timeline: 2 Weeks (10 Business Days)
+## Timeline: 3 Weeks (15 Business Days)
 
-## Week 1: Critical Safety Fixes (Days 1-5)
+## Week 1: EventBus Removal & Direct Connections (Days 1-5)
 
-### Day 1-2: Risk Calculator Safety Fix
-**Priority: 🔴 CRITICAL - FINANCIAL SAFETY**
+### Day 1-2: Remove EventBus Usage
+**Priority: 🔴 HIGH - ARCHITECTURE SIMPLIFICATION**
 
-#### Task 1.1: Fix RiskService Silent Failure
-- **File**: `src/services/risk_service.py`
-- **Issue**: `_ensure_risk_calculator()` returns False instead of raising exception
-- **Changes Required**:
+#### Task 1.1: Update UnifiedDataService
+- **File**: `src/services/unified_data_service.py`
+- **Changes**: Use existing Qt signals instead of EventBus
   ```python
-  # Current (DANGEROUS):
-  def _ensure_risk_calculator(self) -> bool:
-      if not self.risk_calculator:
-          return False  # Silent failure!
+  # OLD: EventBus publishing
+  publish_event(EventType.PRICE_UPDATE, price_data, "UnifiedDataService")
   
-  # Fixed (SAFE):
-  def _ensure_risk_calculator(self) -> None:
-      if not self.risk_calculator:
-          raise RuntimeError("Risk calculator not initialized - cannot proceed with trade")
+  # NEW: Direct signal emission
+  self.fetch_completed.emit(price_data)  # Signal already exists!
   ```
-- **Impact**: All methods using `_ensure_risk_calculator()` need error handling updates
-- **Test**: Write unit tests to verify exception is raised
+- **Locations**: 3 publish_event calls to update
+- **Testing**: Verify price updates still flow to UI
 
-#### Task 1.2: Update Risk Calculation Methods
-- **Methods to Update**:
-  - `calculate_position_size()` - Remove empty result return
-  - `validate_trade()` - Must fail explicitly
-  - `calculate_r_multiple()` - Must not return 0.0 on failure
-- **Pattern**:
+#### Task 1.2: Update MarketDataController
+- **File**: `src/ui/controllers/market_data_controller.py`
+- **Changes**: Connect directly to service signals
   ```python
-  def calculate_position_size(self, ...):
-      self._ensure_risk_calculator()  # Will raise if not ready
-      # ... rest of method
+  # OLD: EventBus subscription
+  subscribe(EventType.PRICE_UPDATE, self._on_price_update)
+  
+  # NEW: Direct connection
+  self._data_service.fetch_completed.connect(self._on_price_update_direct)
   ```
+- **Cleanup**: Remove EventBus imports and subscriptions
 
-#### Task 1.3: Add Mandatory Risk Validation
-- **File**: `src/services/order_service.py`
-- **Add Pre-Order Validation**:
+#### Task 1.3: Measure Performance Impact
+- **Create**: `src/utils/performance_monitor.py`
+- **Measure**: Signal delivery time before/after
+- **Target**: <5ms for price update delivery
+
+### Day 3: Clean Up EventBus Infrastructure
+**Priority: 🟠 HIGH - CODE REDUCTION**
+
+#### Task 2.1: Remove EventBus Files
+- **Delete**: `src/services/event_bus.py` (283 lines)
+- **Delete**: `src/types/common.py` (EventType enum)
+- **Update**: Remove EventBus from `__init__.py` files
+
+#### Task 2.2: Update Service Registry
+- **File**: `src/services/service_registry.py`
+- **Remove**: EventBus initialization and management
+- **Remove**: `start_event_bus()` and `stop_event_bus()` calls
+
+#### Task 2.3: Update Main Application
+- **File**: `main.py`
+- **Remove**: EventBus start/stop calls
+- **Verify**: Application starts without EventBus
+
+### Day 4-5: Simplify Service Dependencies
+**Priority: 🟠 HIGH - REMOVE CIRCULAR DEPENDENCIES**
+
+#### Task 3.1: Fix RiskService Dependencies
+- **File**: `src/services/risk_service.py`
+- **Current Problem**: Dynamic service lookup causing circular imports
   ```python
-  def place_order(self, order_request):
-      # MANDATORY: Validate risk before ANY order
-      risk_validation = self.risk_service.validate_trade(...)
-      if not risk_validation['is_valid']:
-          raise ValueError(f"Risk validation failed: {risk_validation['messages']}")
-      # ... proceed with order
+  # BAD: Dynamic lookup
+  from src.services import get_account_service
+  account_service = get_account_service()
+  ```
+- **Solution**: Constructor injection
+  ```python
+  def __init__(self, account_service: AccountService):
+      self.account_service = account_service  # Explicit dependency
   ```
 
-### Day 3: Testing Infrastructure Setup
-**Priority: 🟠 HIGH - REQUIRED FOR VALIDATION**
+#### Task 3.2: Update MainWindow Service Creation
+- **File**: `src/ui/main_window.py`
+- **Create services in dependency order**:
+  ```python
+  # Explicit wiring - easy to understand and test
+  self.ib_connection = IBConnectionService()
+  self.account_service = AccountService(self.ib_connection)
+  self.risk_service = RiskService(self.account_service)
+  self.order_service = OrderService(self.ib_connection, self.risk_service)
+  ```
 
-#### Task 2.1: Install pytest in ib_trade Environment
-```bash
-/mnt/c/Users/alanc/anaconda3/envs/ib_trade/python.exe -m pip install pytest pytest-cov pytest-mock
-```
+#### Task 3.3: Remove Service Lookups
+- **Search for**: All `get_*_service()` calls
+- **Replace with**: Direct service references
+- **Benefits**: No circular imports, clearer dependencies
 
-#### Task 2.2: Create Critical Safety Test Suite
-- **File**: `tests/critical/test_risk_safety.py`
-- **Tests**:
-  - Test risk calculator initialization failure
-  - Test position size calculation with missing data
-  - Test order rejection on risk validation failure
-  - Test daily loss limit enforcement
+## Week 2: Service-Owned Signals & Critical Flows (Days 6-10)
 
-#### Task 2.3: Create Test Runner Script
-- **File**: `run_safety_tests.py`
-- **Purpose**: Run only critical safety tests quickly
-```python
-#!/usr/bin/env python
-"""Run critical safety tests only"""
-import subprocess
-import sys
+### Day 6-7: Add Missing Service Signals
+**Priority: 🔴 HIGH - COMPLETE ARCHITECTURE**
 
-if __name__ == "__main__":
-    cmd = [sys.executable, "-m", "pytest", "tests/critical/", "-v"]
-    subprocess.run(cmd)
-```
+#### Task 4.1: ConnectionService Signals
+- **File**: `src/services/connection_service.py`
+- **Add signals for connection lifecycle**:
+  ```python
+  class ConnectionService(BaseService, QObject):
+      connection_changed = pyqtSignal(bool, str)  # connected, message
+      account_selected = pyqtSignal(str)  # account_id
+  ```
+- **Emit on state changes**: Connection, disconnection, account selection
 
-### Day 4-5: Additional Safety Measures
-**Priority: 🟠 HIGH - FINANCIAL SAFETY**
-
-#### Task 3.1: Implement Daily Loss Limit Circuit Breaker
-- **File**: Create `src/services/circuit_breaker_service.py`
-- **Features**:
-  - Track daily P&L
-  - Automatic trading halt on limit breach
-  - Manual override with double confirmation
-  - Persistent state across restarts
-
-#### Task 3.2: Add Order Size Validation
+#### Task 4.2: OrderService Signals
 - **File**: `src/services/order_service.py`
-- **Validations**:
-  - Maximum position size (% of account)
-  - Maximum order value ($)
-  - Minimum share size (> 0)
-  - Symbol validation (no typos)
+- **Add order lifecycle signals**:
+  ```python
+  class OrderService(BaseService, QObject):
+      order_submitted = pyqtSignal(dict)
+      order_filled = pyqtSignal(dict)
+      order_failed = pyqtSignal(dict, str)
+  ```
+- **Emit at appropriate points**: Submit, fill, error
 
-#### Task 3.3: Implement Audit Logging
-- **File**: Create `src/services/audit_service.py`
-- **Log All**:
-  - Order attempts (successful and failed)
-  - Risk calculations
-  - Circuit breaker activations
-  - Configuration changes
+#### Task 4.3: Wire Controllers to Service Signals
+- **Update**: All controllers to connect to service signals
+- **Pattern**: Direct connections, no intermediaries
+- **Test**: End-to-end signal flow
 
-## Week 2: Architecture Simplification (Days 6-10)
+### Day 8: Remove ServiceRegistry
+**Priority: 🟠 MEDIUM - SIMPLIFICATION**
 
-### Day 6: Logger Consolidation
-**Priority: 🟡 MEDIUM - CODE QUALITY**
+#### Task 5.1: Create Simple ServiceManager
+- **File**: `src/services/service_manager.py`
+- **Simple container without complexity**:
+  ```python
+  class ServiceManager:
+      def __init__(self):
+          self.services = {}
+      
+      def add(self, name: str, service):
+          self.services[name] = service
+      
+      def cleanup_all(self):
+          for service in reversed(self.services.values()):
+              if hasattr(service, 'cleanup'):
+                  service.cleanup()
+  ```
 
-#### Task 4.1: Analyze Existing Loggers
-- **Files to Review**:
-  - `src/utils/logger.py`
-  - `src/utils/app_logger.py`
-  - `src/utils/simple_logger.py`
-- **Identify**: Which logger is most complete and used most
+#### Task 5.2: Update MainWindow
+- **Replace**: ServiceRegistry with ServiceManager
+- **Simplify**: Service initialization code
+- **Remove**: Complex lifecycle management
 
-#### Task 4.2: Create Unified Logger
-- **File**: `src/utils/unified_logger.py`
+### Day 9-10: Multi-Symbol Foundation
+**Priority: 🟠 MEDIUM - PREPARE FOR NEXT PHASE**
+
+#### Task 6.1: Create MultiSymbolStreaming Service
+- **File**: `src/services/multi_symbol_streaming.py`
 - **Features**:
-  - Single configuration point
-  - File + console output
-  - Rotating file handler
-  - Structured logging (JSON option)
-  - Performance metrics logging
+  - Direct IB API usage
+  - Efficient subscription management
+  - Batch update support
+  - Performance monitoring
 
-#### Task 4.3: Migrate All Code to Unified Logger
-- **Search & Replace**: Update all imports
-- **Test**: Ensure no log messages are lost
+#### Task 6.2: Performance Testing
+- **Test with**: 10-20 symbols
+- **Measure**: Update latency, CPU usage, memory
+- **Document**: Baseline metrics for comparison
 
-### Day 7-8: Service Layer Consolidation (Part 1)
-**Priority: 🟡 MEDIUM - ARCHITECTURE**
+#### Task 6.3: Create Simple Multi-Symbol UI
+- **File**: `src/ui/components/multi_symbol_grid.py`
+- **Basic grid**: Display multiple symbols
+- **Connect to**: MultiSymbolStreaming service
+- **Test**: UI responsiveness with updates
 
-#### Task 5.1: Merge Data Services
-- **Target**: Single `market_data_service.py`
-- **Merge**:
-  - `data_service.py`
-  - `unified_data_service.py`
-  - `price_cache_service.py`
-- **Result**: One service for all market data operations
+## Week 3: Final Cleanup & Optimization (Days 11-15)
 
-#### Task 5.2: Simplify Service Registry
-- **Current**: Complex DI with lifecycle management
-- **Target**: Simple service factory
-- **File**: Create `src/services/service_factory.py`
-```python
-class ServiceFactory:
-    _instances = {}
-    
-    @classmethod
-    def get_service(cls, service_name: str):
-        if service_name not in cls._instances:
-            cls._instances[service_name] = cls._create_service(service_name)
-        return cls._instances[service_name]
-```
-
-### Day 9: EventBus to Qt Signals Migration (Part 1)
-**Priority: 🟡 MEDIUM - ARCHITECTURE**
-
-#### Task 6.1: Create Qt Signal Manager
-- **File**: `src/services/signal_manager.py`
-- **Design**: Centralized Qt signals replacing EventBus
-```python
-class SignalManager(QObject):
-    # Market data signals
-    price_updated = pyqtSignal(str, dict)  # symbol, price_data
-    
-    # Connection signals  
-    connection_status_changed = pyqtSignal(bool)
-    
-    # Order signals
-    order_status_updated = pyqtSignal(dict)
-```
-
-#### Task 6.2: Identify High-Traffic Event Paths
-- **Priority Migration**:
-  1. Price updates (highest traffic)
-  2. Connection status
-  3. Order updates
-
-### Day 10: Documentation & Verification
+### Day 11-12: Final Cleanup
 **Priority: 🟢 LOW - HOUSEKEEPING**
 
-#### Task 7.1: Update Architecture Documentation
-- **Files to Update**:
-  - `CLAUDE.md` - New architecture state
-  - `IMPLEMENTATION_TRACKER.md` - Mark Phase 0 progress
-  - Create `ARCHITECTURE_CHANGES.md` - Document what changed
+#### Task 7.1: Remove Unused Code
+- **Delete**: Any remaining EventBus references
+- **Delete**: Unused service methods
+- **Delete**: Complex BaseService if not needed
 
-#### Task 7.2: Performance Baseline
-- **Create Benchmarks**:
-  - Current price fetch latency
-  - Memory usage with 50 symbols
-  - CPU usage patterns
-- **File**: `benchmarks/baseline_metrics.py`
+#### Task 7.2: Optimize Service Initialization
+- **Remove**: Unnecessary state management
+- **Simplify**: Service lifecycle to init/cleanup only
+- **Document**: New patterns
 
-#### Task 7.3: Run Full Test Suite
-- **Verify**:
-  - All critical safety tests pass
-  - No functionality regression
-  - Performance within targets
+### Day 13-14: Performance Optimization
+**Priority: 🟠 MEDIUM - PERFORMANCE**
 
-## Success Criteria for Phase 0
+#### Task 8.1: Profile Application
+- **Tools**: cProfile, memory_profiler
+- **Identify**: Bottlenecks in signal delivery
+- **Optimize**: Hot paths only
 
-### Safety Fixes ✓
-- [ ] Risk calculator throws exceptions on failure
-- [ ] Orders cannot proceed without risk validation
-- [ ] Daily loss limit circuit breaker active
-- [ ] All safety tests passing
+#### Task 8.2: Optimize Multi-Symbol Updates
+- **Implement**: Smart batching for UI updates
+- **Test**: With 50+ symbols
+- **Target**: <500ms total latency
 
-### Architecture Simplification ✓
-- [ ] 3 loggers → 1 unified logger
-- [ ] Data services consolidated
-- [ ] Service Registry simplified
-- [ ] EventBus migration started
+### Day 15: Documentation & Handoff
+**Priority: 🟢 LOW - DOCUMENTATION**
 
-### Testing & Documentation ✓
-- [ ] pytest installed and working
-- [ ] Critical safety test suite complete
-- [ ] Performance baseline established
-- [ ] Documentation updated
+#### Task 9.1: Update All Documentation
+- **CLAUDE.md**: New architecture
+- **README.md**: Updated setup instructions
+- **EVENTBUS_REMOVAL_PLAN.md**: Mark as completed
+
+#### Task 9.2: Create Migration Guide
+- **Document**: What changed and why
+- **Include**: Performance improvements
+- **Add**: Troubleshooting section
+
+## Success Criteria for Phase 0 (REVISED)
+
+### EventBus Removal ✓
+- [ ] All EventBus imports removed
+- [ ] Services use direct Qt signal connections
+- [ ] Performance improvement measured and documented
+- [ ] No regression in functionality
+
+### Service Simplification ✓
+- [ ] No circular dependencies
+- [ ] Explicit dependency injection
+- [ ] ServiceRegistry replaced with simple manager
+- [ ] Services own their signals
+
+### Multi-Symbol Foundation ✓
+- [ ] MultiSymbolStreaming service created
+- [ ] Basic multi-symbol UI working
+- [ ] Performance baseline with 20+ symbols
+- [ ] <500ms update latency achieved
+
+### Code Reduction ✓
+- [ ] ~40% reduction in infrastructure code
+- [ ] EventBus removed (-283 lines)
+- [ ] ServiceRegistry simplified (-200+ lines)
+- [ ] Cleaner, more maintainable architecture
 
 ## Risk Mitigation
 
 ### Rollback Strategy
-1. Git tag before starting: `git tag pre-phase-0`
-2. Feature flags for new behavior
-3. Parallel run old and new services during migration
-4. Comprehensive testing at each step
+1. Git tag before starting: `git tag pre-eventbus-removal`
+2. Feature flag for EventBus usage:
+   ```python
+   USE_EVENTBUS = False  # Easy toggle for rollback
+   ```
+3. Keep EventBus code until migration verified
+4. Test each service connection independently
 
 ### Testing Strategy
-1. Write tests BEFORE making changes (TDD)
-2. Run tests after EVERY change
-3. Manual testing with paper trading account
-4. Never test with real money until Phase 0 complete
+1. Test signal connections in isolation
+2. Integration test complete flows
+3. Performance benchmarks before/after
+4. Parallel testing with both systems
+
+### Migration Safety
+1. One service at a time
+2. Verify functionality after each change
+3. Keep detailed logs of changes
+4. Document any issues encountered
 
 ## Notes
-- This plan prioritizes financial safety above all else
-- Architecture changes are incremental and reversible
-- Each task should be committed separately for easy rollback
+- This revised plan focuses on actual simplification, not replacement
+- Each change reduces complexity and improves maintainability
+- Direct Qt signals are simpler and more performant than EventBus
+- Services owning their signals provides better encapsulation
+- Performance measurements guide optimization decisions
 - Update IMPLEMENTATION_TRACKER.md after each completed task
+
+## Key Changes from Original Plan
+1. **No SignalHub** - Avoided creating EventBus replacement
+2. **Direct connections** - Services to controllers without intermediaries
+3. **Measure first** - Performance claims backed by actual data
+4. **Simplicity focus** - Remove abstractions that don't add value
+5. **Service ownership** - Each service manages its own signals

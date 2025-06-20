@@ -3,18 +3,18 @@
 ## Quick Status Dashboard
 
 **Project**: Multi-Symbol Monitoring & Alert System  
-**Status**: 🔴 Not Started  
-**Current Phase**: Planning Complete (v2.0)  
-**Next Action**: Begin Phase 0 - Critical Safety Fixes  
-**Blockers**: 3 (Risk calculator fix, Architecture complexity, pytest installation)  
+**Status**: 🟡 In Progress  
+**Current Phase**: Phase 0 - Architecture Simplification (Partial)  
+**Next Action**: Complete safety fixes and continue simplification  
+**Blockers**: 2 (Risk calculator fix, pytest installation)  
 **Timeline**: 8-10 weeks (revised from 6-8 weeks)
 
 ## Phase Progress Summary
 
 | # | Phase | Status | Progress | Duration | Blockers |
 |---|-------|--------|----------|----------|----------|
-| - | Prerequisites | 🔴 Not Started | 0% | 2 days | 3 |
-| 0 | Safety & Simplification | 🔴 Not Started | 0% | 2 weeks | 0 |
+| - | Prerequisites | 🟡 In Progress | 30% | 2 days | 2 |
+| 0 | Safety & Simplification | 🟡 In Progress | 25% | 2 weeks | 0 |
 | 1 | Foundation & Cleanup | 🔴 Not Started | 0% | 2 weeks | 0 |
 | 2 | Pattern Framework | 🔴 Not Started | 0% | 1 week | 0 |
 | 3 | Multi-Symbol Monitoring | 🔴 Not Started | 0% | 2 weeks | 0 |
@@ -27,41 +27,53 @@
 | Task | Status | Priority | Owner | Notes |
 |------|--------|----------|-------|-------|
 | Fix risk calculator silent failure | 🔴 Not Started | CRITICAL | - | **FINANCIAL SAFETY RISK** - Can place orders with 0 shares |
-| Simplify architecture to 3 layers | 🔴 Not Started | CRITICAL | - | 6 layers → 3 layers before adding features |
+| Simplify architecture to 3 layers | 🟡 In Progress | CRITICAL | - | 6 layers → ~4 layers (features removed, loggers consolidated) |
 | Install pytest in ib_trade environment | 🔴 Not Started | HIGH | - | Required for all testing |
 | Validate existing test suite | 🔴 Not Started | HIGH | - | Ensure baseline quality |
 | Document current performance metrics | 🔴 Not Started | MEDIUM | - | Establish baseline |
 
-## Phase 0: Critical Safety Fixes & Architecture Simplification (Weeks 1-2)
+## Phase 0: Critical Safety Fixes & Architecture Simplification (Weeks 1-3)
 
-### Week 1 Tasks
+### Week 1: EventBus Removal & Direct Connections
 
-#### Critical Safety Fixes (MUST DO FIRST)
-- [ ] **0.1** Fix RiskService._ensure_risk_calculator() to raise exception instead of returning empty result
-- [ ] **0.2** Add mandatory position size validation in TradingController.submit_order()
-- [ ] **0.3** Block orders with 0 shares at UI level
-- [ ] **0.4** Add service health indicators to UI
-- [ ] **0.5** Create tests for risk calculator failure scenarios
-- [ ] **0.6** Add circuit breaker for daily loss limits
+#### Remove EventBus (Priority: HIGH)
+- [ ] **0.1** Update UnifiedDataService to use existing Qt signals instead of EventBus
+- [ ] **0.2** Update MarketDataController to connect directly to service signals
+- [ ] **0.3** Remove EventBus imports from all files
+- [ ] **0.4** Delete event_bus.py and EventType enum
+- [ ] **0.5** Measure performance improvement with actual metrics
 
-#### Architecture Simplification - Services
-- [ ] **0.7** Create new simplified services structure:
-  - [ ] `market_data_service.py` (merge 4 services)
-  - [ ] `trading_service.py` (merge order + risk)
-  - [ ] `account_service.py` (remove wrapper)
-- [ ] **0.8** Implement strangler fig pattern - new services alongside old
-- [ ] **0.9** Update UI controllers to use new services
-- [ ] **0.10** Test new services thoroughly
+#### Simplify Service Dependencies
+- [ ] **0.6** Remove circular dependencies in RiskService
+- [ ] **0.7** Update MainWindow with explicit service wiring
+- [ ] **0.8** Remove dynamic service lookups
+- [ ] **0.9** Add dependency injection to service constructors
 
-### Week 2 Tasks
+### Week 2: Service-Owned Signals & Critical Flows
 
-#### Architecture Simplification - Infrastructure
-- [ ] **0.11** Replace EventBus with Qt signals
-- [ ] **0.12** Replace ServiceRegistry with simple factory
-- [ ] **0.13** Consolidate 3 loggers into 1
-- [ ] **0.14** Remove Feature layer (15 files)
-- [ ] **0.15** Delete old services after migration
-- [ ] **0.16** Update all tests for new architecture
+#### Add Service Signals
+- [ ] **0.10** Add connection_changed signal to ConnectionService
+- [ ] **0.11** Add order lifecycle signals to OrderService
+- [ ] **0.12** Add account update signals to AccountService
+- [ ] **0.13** Wire signals in controllers with direct connections
+- [ ] **0.14** Test all signal flows end-to-end
+
+#### Remove ServiceRegistry
+- [ ] **0.15** Create simple ServiceManager class
+- [ ] **0.16** Replace ServiceRegistry usage in MainWindow
+- [ ] **0.17** Update service initialization to explicit order
+- [ ] **0.18** Delete service_registry.py after migration
+- [✓] **0.19** Consolidate 3 loggers into 1 ✅ COMPLETED (Jan 18, 2025)
+- [✓] **0.20** Remove Feature layer (11 files) ✅ COMPLETED (Jan 18, 2025)
+
+### Week 3: Performance Optimization & Multi-Symbol Prep
+
+#### Multi-Symbol Streaming Foundation
+- [ ] **0.21** Create MultiSymbolStreaming service with batch updates
+- [ ] **0.22** Implement efficient symbol subscription management
+- [ ] **0.23** Add performance monitoring utilities
+- [ ] **0.24** Test with 10-20 symbols for baseline metrics
+- [ ] **0.25** Create MultiSymbolGrid UI component
 
 #### Validation & Documentation
 - [ ] **0.17** Verify all safety fixes working
@@ -71,13 +83,16 @@
 
 ### Simplification Metrics
 
-| Metric | Current | Target | Actual |
+| Metric | Current | Target | Actual (Jan 19, 2025) |
 |--------|---------|--------|--------|
-| Service files | 14 | 5 | - |
-| Feature files | 15 | 0 | - |
-| Total LOC in services | ~8,000 | ~3,000 | - |
-| Architecture layers | 6 | 3 | - |
-| Logger implementations | 3 | 1 | - |
+| Service files | 14 | 8 | 12 (removed price_cache_service) |
+| Feature files | 11 | 0 | 0 ✅ |
+| EventBus usage | Yes | No | In Progress |
+| ServiceRegistry | Complex DI | Simple Manager | Not Started |
+| Signal connections | Via EventBus | Direct Qt | Not Started |
+| Total LOC in services | ~8,000 | ~4,000 | ~7,000 |
+| Architecture layers | 6 | 3 | ~4 |
+| Logger implementations | 3 | 1 | 1 ✅ |
 
 ## Phase 1: Foundation & Data Provider Abstraction (Weeks 3-4)
 
@@ -296,6 +311,13 @@ Notes:
 **Owner**: Development Team
 
 ## Change Log
+
+### Version 2.1 (2025-01-18)
+- Started Phase 0 implementation
+- Completed feature layer removal (11 files)
+- Completed logger consolidation (3 → 1)
+- Removed unused price_cache_service
+- Updated progress metrics
 
 ### Version 2.0 (2025-06-15)
 - Added Phase 0 for critical safety fixes
